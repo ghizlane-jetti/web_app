@@ -24,7 +24,7 @@ st.title("🦠 Covid-19 Situation")
 
 
 #Covid data
-data_cov=pd.read_excel("C:/Users/hp/Desktop/Covid.xlsx")
+data_cov=pd.read_excel("Covid.xlsx")
 data_cov1=data_cov.copy()
 #Country/Region
 c=list((data_cov["Country/Region"]))
@@ -990,7 +990,7 @@ except:
 
 st.subheader("📝 Government Measures Taken in Response to COVID-19 in "+select1)
 try:
-    data=pd.read_excel("E:/hp/Downloads/measure1.xlsx")
+    data=pd.read_excel("measure1.xlsx")
     dfm=data[data["COUNTRY"]==select1]
     data_mar=dfm.rename(columns={'DATE_IMPLEMENTED':'Date'})
     groups1=list(data_mar["CATEGORY"])

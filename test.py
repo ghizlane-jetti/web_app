@@ -449,14 +449,14 @@ try:
 
             plt.title("R0_Simpliste "+select1)
             plt.legend(loc='best')
-            path=os.path.abspath(os.getcwd())
-            plt.savefig(path+'\\R0_Sim.jpg')
+            
+            plt.savefig('R0_Sim.jpg')
 
 
 
 
 
-            image = Image.open(path+'\\R0_Sim.jpg')
+            image = Image.open('R0_Sim.jpg')
             st.image(image, caption='R0_Simplist '+select1,
             use_column_width=True)
         #Downoad data
@@ -580,8 +580,8 @@ try:
 
         plt.title("R0_Simpliste "+select1)
         plt.legend(loc='best')
-        path=os.path.abspath(os.getcwd())
-        plt.savefig(path+'\\R0_Sim.jpg')
+        
+        plt.savefig('R0_Sim.jpg')
 
 
 
@@ -589,7 +589,7 @@ try:
 
 
         st.plotly_chart(fig)
-        image = Image.open(path+'\\R0_Sim.jpg')
+        image = Image.open('R0_Sim.jpg')
         st.image(image, caption='R0_Simplist '+select1,
             use_column_width=True)
         #Downoad data
@@ -796,11 +796,11 @@ try:
     # Save graph to file.
     plt.xlabel('Date')
     plt.legend(loc='best')
-    path=os.path.abspath(os.getcwd())
-    plt.savefig(path+'\\R0_B&R.jpg')
+    
+    plt.savefig('R0_B&R.jpg')
 
 
-    image = Image.open(path+'\\R0_B&R.jpg')
+    image = Image.open('R0_B&R.jpg')
     st.image(image, caption='R0_Bettencourt & Rebeiro '+select1,
             use_column_width=True)
     #Downoad data

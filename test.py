@@ -951,7 +951,7 @@ try:
             xaxis_title="Date",
             yaxis_title="Doubling Time"
         )
-    st.write("Linear Regression: f(Time) = "+a+"*X +"+b)
+    st.write("Linear Regression: f(Time) = "+a+"*Time +"+b)
     st.write("R-squared "+r2)
     st.plotly_chart(fig)
     #Downoad data

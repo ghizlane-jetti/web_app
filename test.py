@@ -31,7 +31,7 @@ import datetime
 
 #END
 
-image = Image.open("logo.PNG")
+image = Image.open("logo.png")
 st.image(image,
 		use_column_width=True)
 

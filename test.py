@@ -838,9 +838,9 @@ def main():
 
 							plt.title("R0_Simpliste "+select1)
 							plt.legend(loc='best')
-							path=os.path.abspath(os.getcwd())
-							plt.savefig(path+'\\R0_Sim.jpg')
-							image = Image.open(path+'\\R0_Sim.jpg')
+
+							plt.savefig("R0_Sim.jpg")
+							image = Image.open('R0_Sim.jpg')
 							st.image(image, caption='R0_Simplist '+select1,
 							use_column_width=True)
 
@@ -1073,12 +1073,11 @@ def main():
 							plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="Régression Linéaire")
 							# Save graph to file.
 							plt.xlabel('Date')
-							plt.legend(loc='best')
-							path=os.path.abspath(os.getcwd())
-							plt.savefig(path+'\\R0_B&R.jpg')
+							
+							plt.savefig('R0_B&R.jpg')
 
 
-							image = Image.open(path+'\\R0_B&R.jpg')
+							image = Image.open('R0_B&R.jpg')
 							st.image(image, caption='R0_Bettencourt & Rebeiro '+select1,
 									use_column_width=True)
 							st.markdown("""""")
@@ -1389,8 +1388,11 @@ def main():
 							print("Something went wrong")
 
 
-						else:
-							st.warning("Incorrect Username/Password")
+						
+			else :
+				st.warning("Incorrect Username/Password")
+				
+
 
 
 

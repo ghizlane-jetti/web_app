@@ -314,7 +314,7 @@ def main():
 				c=list((data_cov["Country/Region"]))
 				c=list(np.unique(c))
 
-				select0= st.sidebar.selectbox('Select :', ["Overview","World Data","By country"], key='2')
+				select0= st.sidebar.selectbox('Select :', ["Overview","World Data","By country","Country comparison covid-19"], key='2')
 				if select0=="World Data":
 					st.markdown("""     """)
 					image = Image.open("world.jpg")
@@ -329,7 +329,617 @@ def main():
 
 
 
-				if select0=="Overview":
+				elif select0=="Country comparison covid-19":
+					df=data_cov1
+					l=list(df["Country/Region"])
+					countries=list(np.unique(l))
+					multiselection = st.multiselect("Select countries:", countries)
+					df = df[df["Country/Region"].isin(multiselection)]
+					dates = list(df["Date"])
+					d=[]
+					for i in dates:
+
+						d.append(datetime.strptime(i, '%d/%m/%Y'))
+					df['Date']=d
+					rad1=["Lethality","Recovery","Closure Time","R0 - simplistic method","R0 - Bettencourt & Rebeiro Method","Doubling Time","IRR"]
+					op = st.sidebar.radio(label="", options=rad1)
+					count=multiselection
+					if op=="Lethality":
+						try:
+							lethal=[]
+							ld=[]
+							for count in multiselection:
+
+								data=df[df["Country/Region"]==count]
+								clo=list(data['Closure'])
+								death=list(data['Deaths'])
+								conf=list(data['Confirmed'])
+								n=len(clo)
+
+								letal1=[]
+								for i in range(30,n):
+									letal1.append(100*(death[i]/(conf[i])))
+								l1=[]
+								for i in range(30):
+									l1.append(np.nan)
+								l1.extend(letal1)
+
+
+								data["lethality"]=l1
+								ld.append(data)
+							df_row = pd.concat(ld)
+							fig = px.line(df_row,x="Date", y="lethality",color="Country/Region")
+
+							fig.update_layout(
+
+									xaxis_title="Date",
+									yaxis_title="Lethality",
+
+
+
+									plot_bgcolor='white'
+
+								)
+							st.plotly_chart(fig)
+							df_row.to_excel("lethality.xlsx")
+
+
+							st.markdown(get_binary_file_downloader_html('lethality.xlsx', 'Lethality_Data'), unsafe_allow_html=True)
+
+
+
+						except:
+							print("Something went wrong")
+					elif op=="Recovery":
+						try:
+							rec=[]
+							ld=[]
+							for count in multiselection:
+
+								data=df[df["Country/Region"]==count]
+								clo=list(data['Closure'])
+								rec=list(data['Recovered'])
+								n=len(clo)
+
+								rec1=[]
+								for i in range(30,n):
+									rec1.append(100*(rec[i]/clo[i]))
+								l1=[]
+								for i in range(30):
+									l1.append(np.nan)
+								l1.extend(rec1)
+
+
+								data["Recovery"]=l1
+								ld.append(data)
+							df_row = pd.concat(ld)
+							fig = px.line(df_row,x="Date", y="Recovery",color="Country/Region")
+
+							fig.update_layout(
+
+									xaxis_title="Date",
+									yaxis_title="Recovery",
+
+
+
+									plot_bgcolor='white'
+
+								)
+							st.plotly_chart(fig)
+							df_row.to_excel("recovery.xlsx")
+
+
+							st.markdown(get_binary_file_downloader_html('recovery.xlsx', 'Recovery_Data'), unsafe_allow_html=True)
+
+
+
+
+						except:
+							print("Something went wrong")
+					elif op=="Closure Time":
+						try:
+							ld=[]
+							for count in multiselection:
+
+
+								data=df[df["Country/Region"]==count]
+								date1=[]
+								date2=[]
+								for i in range(30,len(data)):
+									a=list(data["Closure"])[i]
+									date1.append(list(data["Date"])[i])
+									b=list(data["Confirmed"])[i]
+									j=i
+									while(b!=a and a<b):
+										j=j-1
+										b=list(data["Confirmed"])[j]
+
+									date2.append(list(data["Date"])[j])
+								days=[]
+								for i in range(len(data)-30):
+									days.append((date1[i]-date2[i]).days)
+								l=[]
+								for i in range(30):
+									l.append(np.nan)
+								l.extend(days)
+								data["closure_time"]=l
+								ld.append(data)
+
+							df_row = pd.concat(ld)
+							fig = px.line(df_row,x="Date", y="closure_time",color="Country/Region")
+
+							fig.update_layout(
+
+										xaxis_title="Date",
+										yaxis_title="closure time",
+
+
+
+										plot_bgcolor='white'
+
+									)
+							st.plotly_chart(fig)
+							df_row.to_excel("Closure_Time.xlsx")
+
+
+							st.markdown(get_binary_file_downloader_html('Closure_Time.xlsx', 'Closure_Time'), unsafe_allow_html=True)
+
+						except:
+							print("Something went wrong")
+					elif op=="R0 - simplistic method":
+						try:
+							try:
+								ld=[]
+
+
+								for count in multiselection:
+
+
+
+									data1=df[df["Country/Region"]==count]
+
+
+
+									data = pd.DataFrame(data1, columns=['Date','Difference']).set_index('Date')
+
+									data['smooth_mean(gauss, win=7)'] = data.iloc[:,0].rolling(7,
+										win_type='gaussian',
+										min_periods=1,
+										center=True).mean(std=2).round()
+									ds=list(data['smooth_mean(gauss, win=7)'])
+									for i in range(len(ds)):
+										if ds[i]==0:
+											ds[i]=np.nan
+									data['smooth_mean(gauss, win=7)']=ds
+									gauss=list(data['smooth_mean(gauss, win=7)'])[9:]
+									l_7=[]
+									for i in range(len(gauss)-6):
+										if  m.isnan(gauss[i])==True or m.isnan(gauss[i+6])==True:
+											l_7.append(np.nan)
+										else:
+											l_7.append(round(gauss[i+6])/round(gauss[i]))
+
+									gauss=list(data['smooth_mean(gauss, win=7)'])[9:]
+									l_4=[]
+									for i in range(len(gauss)-3):
+										if  m.isnan(gauss[i])==True or m.isnan(gauss[i+3])==True :
+											l_4.append(np.nan)
+										else:
+											l_4.append(round(gauss[i+3])/round(gauss[i]))
+									N=len(data)
+									n_4=len(l_4)
+									n_7=len(l_7)
+
+									gauss_4=[]
+									gauss_7=[]
+									for i in range(N-n_4):
+										gauss_4.append(np.nan)
+									gauss_4.extend(l_4)
+
+									for i in range(N-n_7):
+										gauss_7.append(np.nan)
+									gauss_7.extend(l_7)
+									data["Gaussian_R0_4_Days"]=gauss_4
+									data["Gaussian_R0_7_Days"]=gauss_7
+									col = data.loc[: , "Gaussian_R0_4_Days":"Gaussian_R0_7_Days"]
+									data['R0_Simpliste'] = col.mean(axis=1)
+									R0_sim=list(data['R0_Simpliste'])
+									data['Date']=data.index
+
+									dt=list(data.Date)
+									country=[count for i in range(len(dt))]
+									data_per1=pd.DataFrame(list(zip(dt,R0_sim,country)),
+										columns =['Date',"R0_Simpliste","Country/Region"])
+									ld.append(data_per1)
+							except:
+								st.markdown("Sorry something went wrong. Please try to choose an other priod for  "+count)
+							df_row = pd.concat(ld)
+							df_row=df_row.sort_values(by=['Date'])
+							ind1=min(list(df_row['Date']))
+
+							ind2=max(list(df_row['Date']))
+							n=(ind2-ind1).days
+							dat=[ind1+timedelta(days=i) for i in range(n+1)]
+
+							from_date  = st.selectbox('From :', dat )
+							l2=dat[1:]
+							to_date= st.selectbox('To :',l2  )
+							ind1=[index for index, value in enumerate(list(df_row['Date'])) if value == from_date][0]
+							ind2=[index for index, value in enumerate(list(df_row['Date'])) if value == to_date][-1]
+							R0_sim=list(df_row['R0_Simpliste'])[ind1:ind2+1]
+							dt=list(df_row['Date'])[ind1:ind2+1]
+							coun=list(df_row['Country/Region'])[ind1:ind2+1]
+							data_per=pd.DataFrame(list(zip(dt,R0_sim,coun)),
+								columns =['Date',"R0","Country/Region"])
+
+							i1=from_date
+							i2=to_date
+							n=(i2-i1).days
+							X=[i1+timedelta(days=i) for i in range(n+1)]
+							fig = px.line(data_per,x="Date", y="R0",color="Country/Region")
+
+							fig.update_layout(
+								plot_bgcolor='white',
+								xaxis_title="Date",
+								yaxis_title="R0 - Simplistic Method"
+							)
+							reference_line = go.Scatter(x=X,
+													y=[1 for i in range(len(X))],
+													mode="lines",
+													line=go.scatter.Line(color="black"),
+
+													showlegend=False)
+							fig.add_trace(reference_line)
+
+
+							fig.add_trace(reference_line)
+							st.plotly_chart(fig)
+
+							df_row=df_row.sort_values(by=['Country/Region',"Date"])
+							df_row.to_excel("R0_Simplistic.xlsx")
+
+
+							st.markdown(get_binary_file_downloader_html('R0_Simplistic.xlsx', 'Data'), unsafe_allow_html=True)
+
+
+
+
+						except:
+							print("something went wrong")
+					if op=="R0 - Bettencourt & Rebeiro Method":
+						try:
+							try:
+								ld=[]
+
+
+								for count in multiselection:
+
+
+
+									data1=df[df["Country/Region"]==count]
+
+									data1.to_excel("Data_covid.xlsx")
+									url = 'Data_covid.xlsx'
+									dff = pd.read_excel(url,
+														usecols=['Date', 'Country/Region', 'Difference'],
+														index_col=[1,0],
+														squeeze=True).sort_index()
+									country_name = count
+									# We create an array for every possible value of Rt
+									R_T_MAX = 12
+									r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
+
+									def prepare_cases(cases, cutoff=10):
+										new_cases = cases
+
+										smoothed = new_cases.rolling(7,
+											win_type='gaussian',
+											min_periods=1,
+											center=True).mean(std=2).round()
+
+										idx_start = np.searchsorted(smoothed, cutoff)
+
+										smoothed = smoothed.iloc[idx_start:]
+										original = new_cases.loc[smoothed.index]
+
+										return original, smoothed
+									cases = dff.xs(country_name).rename(f"{country_name} cases")
+
+									original, smoothed = prepare_cases(cases)
+									GAMMA = 1/7
+									def get_posteriors(sr, sigma=0.15):
+
+										# (1) Calculate Lambda
+										lam = sr[:-1].values * np.exp(GAMMA * (r_t_range[:, None] - 1))
+
+
+									# (2) Calculate each day's likelihood
+										likelihoods = pd.DataFrame(
+											data = sps.poisson.pmf(sr[1:].values, lam),
+											index = r_t_range,
+											columns = sr.index[1:])
+
+									# (3) Create the Gaussian Matrix
+										process_matrix = sps.norm(loc=r_t_range,
+																	scale=sigma
+																	).pdf(r_t_range[:, None])
+
+									# (3a) Normalize all rows to sum to 1
+										process_matrix /= process_matrix.sum(axis=0)
+
+									# (4) Calculate the initial prior
+									#prior0 = sps.gamma(a=4).pdf(r_t_range)
+										prior0 = np.ones_like(r_t_range)/len(r_t_range)
+										prior0 /= prior0.sum()
+
+									# Create a DataFrame that will hold our posteriors for each day
+									# Insert our prior as the first posterior.
+										posteriors = pd.DataFrame(
+											index=r_t_range,
+											columns=sr.index,
+											data={sr.index[0]: prior0}
+										)
+
+									# We said we'd keep track of the sum of the log of the probability
+									# of the data for maximum likelihood calculation.
+										log_likelihood = 0.0
+
+									# (5) Iteratively apply Bayes' rule
+										for previous_day, current_day in zip(sr.index[:-1], sr.index[1:]):
+
+										#(5a) Calculate the new prior
+											current_prior = process_matrix @ posteriors[previous_day]
+
+										#(5b) Calculate the numerator of Bayes' Rule: P(k|R_t)P(R_t)
+											numerator = likelihoods[current_day] * current_prior
+
+										#(5c) Calcluate the denominator of Bayes' Rule P(k)
+											denominator = np.sum(numerator)
+											if denominator!=0:
+
+										# Execute full Bayes' Rule
+												posteriors[current_day] = numerator/denominator
+
+										# Add to the running sum of log likelihoods
+
+												log_likelihood += np.log(denominator)
+
+										return posteriors, log_likelihood
+
+									# Note that we're fixing sigma to a value just for the example
+									posteriors, log_likelihood = get_posteriors(smoothed, sigma=.25)
+									posteriors=posteriors.dropna(axis=1, how='all')
+									def highest_density_interval(pmf, p=.9, debug=False):
+									# If we pass a DataFrame, just call this recursively on the columns
+										if(isinstance(pmf, pd.DataFrame)):
+											return pd.DataFrame([highest_density_interval(pmf[col], p=p) for col in pmf],
+															index=pmf.columns)
+
+										cumsum = np.cumsum(pmf.values)
+
+									# N x N matrix of total probability mass for each low, high
+										total_p = cumsum - cumsum[:, None]
+
+									# Return all indices with total_p > p
+										lows, highs = (total_p > p).nonzero()
+
+									# Find the smallest range (highest density)
+										best = (highs - lows).argmin()
+
+										low = pmf.index[lows[best]]
+										high = pmf.index[highs[best]]
+
+										return pd.Series([low, high],
+														index=[f'Low_{p*100:.0f}',
+															f'High_{p*100:.0f}'])
+
+									hdi = highest_density_interval(posteriors, debug=True)
+									# Note that this takes a while to execute - it's not the most efficient algorithm
+									hdis = highest_density_interval(posteriors, p=.9)
+
+									most_likely = posteriors.idxmax().rename('ML')
+
+									# Look into why you shift -1
+									result = pd.concat([most_likely, hdis], axis=1)
+
+
+									index = pd.to_datetime(result['ML'].index.get_level_values('Date'))
+									values = result['ML'].values
+									coun=[count for i in range(len(values))]
+									R0 = pd.DataFrame(list(zip(list(index), list(values),coun)),
+												columns =['Date', 'R0',"Country/Region"])
+									ld.append(R0)
+							except:
+								st.markdown("**Note** : Sorry, something went wrong, you can use simplistic method to visualize R0 evolution of  "+count)
+							df_row = pd.concat(ld)
+							df_row=df_row.sort_values(by=['Date'])
+							ind1=min(list(df_row['Date']))
+
+							ind2=max(list(df_row['Date']))
+							n=(ind2-ind1).days
+							dat=[ind1+timedelta(days=i) for i in range(n+1)]
+
+							from_date  = st.selectbox('From :', dat )
+							l2=dat[1:]
+							to_date= st.selectbox('To :',l2  )
+							ind1=[index for index, value in enumerate(list(df_row['Date'])) if value == from_date][0]
+							ind2=[index for index, value in enumerate(list(df_row['Date'])) if value == to_date][-1]
+							R0_BR=list(df_row['R0'])[ind1:ind2+1]
+							dt=list(df_row['Date'])[ind1:ind2+1]
+							coun=list(df_row['Country/Region'])[ind1:ind2+1]
+							data_per=pd.DataFrame(list(zip(dt,R0_BR,coun)),
+								columns =['Date',"R0","Country/Region"])
+
+							i1=from_date
+							i2=to_date
+							n=(i2-i1).days
+							X=[i1+timedelta(days=i) for i in range(n+1)]
+							fig = px.line(data_per,x="Date", y="R0",color="Country/Region")
+
+							fig.update_layout(
+								plot_bgcolor='white',
+								xaxis_title="Date",
+								yaxis_title="R0 Bettencourt & Rebeiro"
+							)
+							reference_line = go.Scatter(x=X,
+													y=[1 for i in range(len(X))],
+													mode="lines",
+													line=go.scatter.Line(color="black"),
+
+													showlegend=False)
+							fig.add_trace(reference_line)
+							df_row=df_row.sort_values(by=['Country/Region',"Date"])
+							st.plotly_chart(fig)
+							df_row.to_excel("R0_BR.xlsx")
+
+
+							st.markdown(get_binary_file_downloader_html('R0_BR.xlsx', 'Data'), unsafe_allow_html=True)
+						except:
+							print('something went wrong')
+
+
+					if op=="Doubling Time":
+						try:
+							ld=[]
+							for count in multiselection:
+
+								dataa=df[df["Country/Region"]==count]
+								try:
+									dates = list(df["Date"])
+									d=[]
+									for i in dates:
+
+										d.append(datetime.strptime(i, '%d/%m/%Y'))
+									df['Date']=d
+								except:
+									print("Oops!")
+								def irr(d1,dn,c1,cn):
+									irr=(cn/c1)**(1/(dn-d1).days)-1
+
+									return(irr)
+								def DT(irr):
+									p=m.log(2)/m.log(1+irr)
+									return(p)
+								data = pd.DataFrame(dataa, columns=['Date',"Country/Region",'Confirmed',"Closure"]).set_index('Date')
+							#n1=list(data["date"]).index(list(dr['Date'])[0])
+							#n2=list(data["date"]).index(list(dr['Date'])[-1])
+							#st.write(n1)
+							#st.write(n2)
+
+								IRR=[]
+								DoubT=[]
+								l=list(data["Confirmed"])
+								n=0
+								for i in range(len(l)-1):
+									if l[i]!=l[i+1]:
+										n=i
+										break
+
+								c1=data["Confirmed"][n]
+								d1=dates[n]
+								for i in range(n+1,len(data)):
+									cn=data["Confirmed"][i]
+									dn=dates[i]
+									IRR.append(irr(d1,dn,c1,cn)*100)
+									DoubT.append(DT(irr(d1,dn,c1,cn)))
+
+								DoublingTime=[]
+								for i in range(n+1):
+									DoublingTime.append(np.nan)
+								DoublingTime.extend(DoubT)
+								data1=data.copy()
+								data1['Doubling Time']=DoublingTime
+								data1['Date']=data1.index
+								ld.append(data1)
+
+							df_row = pd.concat(ld)
+							fig = px.line(df_row,x="Date", y="Doubling Time",color="Country/Region")
+
+							fig.update_layout(
+
+										xaxis_title="Date",
+										yaxis_title="Doubling Time",
+
+
+
+										plot_bgcolor='white'
+
+									)
+							st.plotly_chart(fig)
+							df_row.to_excel("DT.xlsx")
+							st.markdown(get_binary_file_downloader_html('DT.xlsx', 'Data'), unsafe_allow_html=True)
+
+						except:
+							st.markdown("Something went wrong")
+					if op=="IRR":
+						try:
+							ld=[]
+							for count in multiselection:
+
+								dataa=df[df["Country/Region"]==count]
+								try:
+									dates = list(df["Date"])
+									d=[]
+									for i in dates:
+
+										d.append(datetime.strptime(i, '%d/%m/%Y'))
+									df['Date']=d
+								except:
+									print("Oops!")
+								def irr(d1,dn,c1,cn):
+									irr=(cn/c1)**(1/(dn-d1).days)-1
+
+									return(irr)
+
+								data = pd.DataFrame(dataa, columns=['Date',"Country/Region",'Confirmed',"Closure"]).set_index('Date')
+							#n1=list(data["date"]).index(list(dr['Date'])[0])
+							#n2=list(data["date"]).index(list(dr['Date'])[-1])
+							#st.write(n1)
+							#st.write(n2)
+
+								IRR=[]
+								l=list(data["Confirmed"])
+								n=0
+								for i in range(len(l)-1):
+									if l[i]!=l[i+1]:
+										n=i
+										break
+
+								c1=data["Confirmed"][n]
+								d1=dates[n]
+								for i in range(n+1,len(data)):
+									cn=data["Confirmed"][i]
+									dn=dates[i]
+									IRR.append(irr(d1,dn,c1,cn)*100)
+								IRRn=[]
+
+								for i in range(n+1):
+									IRRn.append(np.nan)
+								IRRn.extend(IRR)
+								data['IRR']=IRRn
+								data['Date']=data.index
+								ld.append(data)
+
+							df_row = pd.concat(ld)
+							fig = px.line(df_row,x="Date", y="IRR",color="Country/Region")
+
+							fig.update_layout(
+
+										xaxis_title="Date",
+										yaxis_title="IRR",
+
+
+
+										plot_bgcolor='white'
+
+									)
+							st.plotly_chart(fig)
+							df_row.to_excel("IRR.xlsx")
+							st.markdown(get_binary_file_downloader_html('IRR.xlsx', 'Data'), unsafe_allow_html=True)
+						except:
+							st.markdown("Something went wrong")
+
+				elif select0=="Overview":
 					st.markdown("""     """)
 					image = Image.open("IM.jpg")
 					st.image(image,
@@ -374,7 +984,6 @@ def main():
 					select1= st.sidebar.selectbox('Select Country/Region:', c, key='2')
 
 					s=select1
-					"""    """
 					st.write("#### :globe_with_meridians: Country selected: **{}**".format(s))
 					"""    """
 					"""    """
@@ -385,7 +994,7 @@ def main():
 					for i in dates:
 
 						d.append(datetime.strptime(i, '%d/%m/%Y'))
-					rad=['Confirmed cases', 'Recovered cases',"Deaths","New cases per day","Closed cases","Actif cases","Lethality","Recovery","Logistic Model","R0 (simplistic Method)","R0 (Bettencourt and Rebeiro Method)","Closure Time","Doubling Time","IRR","Government Measures"]
+					rad=['Confirmed cases', 'Recovered cases',"Deaths","New cases per day","Closed cases","Active cases","Lethality","Recovery","Logistic Model","R0 (simplistic Method)","R0 (Bettencourt and Rebeiro Method)","Closure Time","Doubling Time","IRR","Tests","Government Measures"]
 					radio = st.sidebar.radio(label="", options=rad)
 
 
@@ -430,12 +1039,15 @@ def main():
 					if radio == 'Confirmed cases':
 						st.markdown("")
 						st.subheader("Confirmed cases:")
-						fig = px.bar(df,x="Date", y="Confirmed")
+						fig = go.Figure()
+						fig.add_trace(go.Bar(name="Confirmed cases", x=list(df['Date']), y=list(df['Confirmed'])))
 						fig.update_layout(
+							showlegend=True,
 
 							xaxis_title="Time (Date)",
 							yaxis_title="Nº of Confirmed cases",
-							plot_bgcolor='white')
+							plot_bgcolor='white'
+							)
 						st.plotly_chart(fig)
 						st.subheader('Data')
 						st.write(data)
@@ -445,8 +1057,10 @@ def main():
 					elif radio == "Recovered cases":
 						st.markdown("")
 						st.subheader("Recovered cases:")
-						fig = px.bar(df,x="Date", y="Recovered")
+						fig = go.Figure()
+						fig.add_trace(go.Bar(name="Recovered cases", x=list(df['Date']), y=list(df['Recovered'])))
 						fig.update_layout(
+							showlegend=True,
 							plot_bgcolor='white',
 							xaxis_title="Time (Date)", yaxis_title="Nº of Recovered cases"
 							)
@@ -457,9 +1071,10 @@ def main():
 					elif radio == "Deaths":
 						st.markdown("")
 						st.subheader("Deaths:")
-						fig = px.bar(df,x="Date", y="Deaths")
+						fig = go.Figure()
+						fig.add_trace(go.Bar(name="Deaths", x=list(df['Date']), y=list(df['Deaths'])))
 						fig.update_layout(
-
+							showlegend=True,
 							xaxis_title="Time (Date)",
 							yaxis_title="Nº of Deaths",
 							plot_bgcolor='white'
@@ -470,14 +1085,19 @@ def main():
 						st.subheader('Data')
 						st.write(data)
 						st.markdown(get_binary_file_downloader_html('data.xlsx', 'Data'), unsafe_allow_html=True)
-					elif radio == "Actif cases":
-						st.markdown("")
-						st.subheader("Actif cases:")
-						fig = px.bar(df,x="Date", y="Actif")
-						fig.update_layout(
+					elif radio == "Active cases":
 
+						st.subheader("Active cases:")
+						st.markdown("")
+						st.markdown("By removing deaths and recoveries from total cases, we get currently infected cases or active cases (cases still awaiting for an outcome).")
+						st.markdown("**Active cases** = Confirmed Cases - Closed Cases = Confirmed Cases - Recovered cases - Deaths ")
+
+						fig = go.Figure()
+						fig.add_trace(go.Bar(name="Active cases", x=list(df['Date']), y=list(df['Actif'])))
+						fig.update_layout(
+							showlegend=True,
 							xaxis_title="Time (Date)",
-							yaxis_title="Nº of actif cases",
+							yaxis_title="Nº of active cases",
 							plot_bgcolor='white'
 
 						)
@@ -487,10 +1107,15 @@ def main():
 						st.write(data)
 						st.markdown(get_binary_file_downloader_html('data.xlsx', 'Data'), unsafe_allow_html=True)
 					elif radio == "Closed cases":
-						st.markdown("")
 						st.subheader("Closed cases:")
-						fig = px.bar(df,x="Date", y="Closure")
+						st.markdown("")
+						st.markdown("Closure of case means recovery or death.")
+						st.markdown("**Closed cases** = Recovered cases + Deaths")
+
+						fig = go.Figure()
+						fig.add_trace(go.Bar(name="Closed cases", x=list(df['Date']), y=list(df['Closure'])))
 						fig.update_layout(
+							showlegend=True,
 
 							xaxis_title="Time (Date)",
 							yaxis_title="Nº of Closure cases",
@@ -502,11 +1127,81 @@ def main():
 						st.subheader('Data')
 						st.write(data)
 						st.markdown(get_binary_file_downloader_html('data.xlsx', 'Data'), unsafe_allow_html=True)
+					elif radio=="Tests":
+						st.markdown("")
+						st.subheader("Covid-19 testing:")
+						st.markdown("Testing for COVID-19 involves inserting a 6-inch long swab (like a long Q-tip) into the cavity between the nose and mouth (nasopharyngeal swab) for 15 seconds and rotating it several times. The swabbing is then repeated on the other side of the nose to make sure enough material is collected. The swab is then inserted into a container and sent to a lab for testing.")
+						image = Image.open("test.png")
+						st.image(image,
+							use_column_width=True)
+						st.markdown("Each country does a specific number of tests every day in order to find out how the virus is spreading and try to stop the transmission of the disease. ")
+						d1 = today.strftime("%Y-%m-%d")
+						test=pd.read_excel("owid-covid-data.xlsx")
+						d2=list(test['date'])[-1]
+						from datetime import datetime
+
+						def days_between(d1, d2):
+							d1 = datetime.strptime(d1, "%Y-%m-%d")
+							d2 = datetime.strptime(d2, "%Y-%m-%d")
+							return abs((d2 - d1).days)
+						if d1!=list(test['date'])[-1] and days_between(d1, d2)>1 :
+							url="https://covid.ourworldindata.org/data/owid-covid-data.xlsx"
+							wget.download(url, 'owid-covid-data.xlsx')
+							test=pd.read_excel("owid-covid-data.xlsx")
+
+						test1=test[test["location"]==select1]
+						st.markdown("**New tests per day :**")
+						fig1=go.Figure()
+
+						fig1.add_trace(go.Bar(name="New tests per day", x=list(test1['date']), y=list(test1['new_tests'])))
+						fig1.update_layout(
+							showlegend=True,
+
+							xaxis_title="Time (Date)",
+							yaxis_title="New tests",
+							plot_bgcolor='white'
+
+						)
+
+						st.plotly_chart(fig1)
+						st.markdown("**Total tests :**")
+						fig2=go.Figure()
+
+						fig2.add_trace(go.Bar(name="Total tests", x=list(test1['date']), y=list(test1['total_tests'])))
+						fig1.update_layout(
+							showlegend=True,
+
+							xaxis_title="Time (Date)",
+							yaxis_title="Total tests",
+							plot_bgcolor='white'
+
+						)
+
+						st.plotly_chart(fig2)
+						st.markdown("**Note :** If you haven't observe anything that's because tests data of this country is not availavble.")
+						test1.to_excel("data_test.xlsx")
+						st.markdown(get_binary_file_downloader_html('data_test.xlsx', 'Data'), unsafe_allow_html=True)
+
 					elif radio == "New cases per day":
 						st.markdown("")
 						st.subheader("New cases:")
-						fig = px.bar(df,x="Date", y="Difference")
+						data = pd.DataFrame(df, columns=['Date','Difference']).set_index('Date')
+
+
+						data['Smoothed'] = data.iloc[:,0].rolling(7,
+								win_type='gaussian',
+								min_periods=1,
+								center=True).mean(std=2).round()
+
+
+
+						fig = go.Figure()
+						fig.add_trace(go.Bar(name="New cases per day", x=list(data.index), y=list(data['Difference'])))
+						fig.add_trace(go.Line(name="Time serie of infection (Smoothed)", x=list(data.index), y=list(data['Smoothed'])))
+						data.to_excel("data.xlsx")
+
 						fig.update_layout(
+							showlegend=True,
 
 							xaxis_title="Time (Date)",
 							yaxis_title="Nº of new cases per day",
@@ -564,7 +1259,12 @@ def main():
 						if radio=="Lethality":
 							st.subheader("☞ Evolution of Lethality rate over time in "+select1)
 							"""  """
-							st.markdown("**Lethality** = number of deaths / over number of sick with a specific disease (x100) It is also known as Case fatality rate. It is the proportion of cases in a designated population of a particular disease, which die in a specified period of time.")
+							st.markdown("Lethality is the number of deaths / over number of sick with a specific disease (x100) It is also known as **Case fatality rate**. It is the proportion of cases in a designated population of a particular disease, which die in a specified period of time.")
+							st.markdown("**Lethality** = Case Fatality Rate = CFR ")
+							image = Image.open("cfr.png")
+							st.image(image,
+							use_column_width=True)
+							st.markdown("")
 							st.markdown("**Note:** lethality is a better measure of clinical significance of the disease than mortality. For example: Naegleria fowleri has a much higher lethality (it will surely kill you once you get it), than heart attacks who have a higher mortality, that is, more people die from heart attacks (due to much higher prevalence of cardiac disease) rather than from N. fowleri infection (very low prevalence).")
 
 							st.plotly_chart(fig)
@@ -581,19 +1281,28 @@ def main():
 					if radio=="Recovery":
 						st.subheader("☞ Evolution of Recovery rate over time in "+select1)
 						""""""
-						st.markdown("""**The recovery rate:** is determined as the ratio of the number of patients recovering with the diagnosis of COVID‐19 disease. """)
+						st.markdown("""The recovery rate is determined as the ratio of the number of patients recovering with the diagnosis of COVID‐19 disease. """)
+						st.markdown("**Recovery Rate** = (Recovered Cases ÷ Confirmed Cases) x 100% ")
 						try:
 							letal=[]
+							recover1= []
+							recover2=[]
 							for i in range(30,n):
-								letal.append(100*(rec[i]/(clo[i])))
-							l=[]
+								recover1.append(100*(rec[i]/(clo[i])))
+								recover2.append(100*(rec[i]/(conf[i])))
+							l1=[]
+							l2=[]
 							for i in range(30):
-								l.append(np.nan)
-							l.extend(letal)
-							letal=l
-							recovery=pd.DataFrame(list(zip(list(df['Date']),list(df['Country/Region']),letal1)),columns =['Date',"Country/Region",'Deaths/Closure'])
-							recovery["Recovery"]=letal
-							fig = px.line(recovery,x="Date", y=['Recovery','Deaths/Closure'])
+								l1.append(np.nan)
+								l2.append(np.nan)
+							l1.extend(recover1)
+							l2.extend(recover2)
+
+							recover1=l1
+							recover2=l2
+							recovery=pd.DataFrame(list(zip(list(df['Date']),list(df['Country/Region']),recover2)),columns =['Date',"Country/Region",'Recovered/Confirmed'])
+							recovery["Recovered/Closed"]=recover1
+							fig = px.line(recovery,x="Date", y=['Recovered/Confirmed','Recovered/Closed'])
 							fig.update_layout(
 
 									xaxis_title="Date",
@@ -615,81 +1324,124 @@ def main():
 					# Logistic Model
 					elif radio=="Logistic Model":
 
-						try:
+						#try:
 							df.index=[i for i in range(len(df))]
 
 							x = df["Confirmed"].index
 							y =df["Confirmed"].values
 
 							# inflection point estimation
-							dy = np.diff(y,n=10) #  derivative
-							idx_max_dy = np.argmax(dy)
+							inf="no"
+							fl=0
+							while(inf=="no"):
+								try:
+									dy = np.diff(y,n=2+fl) #  derivative
+									idx_max_dy = np.argmax(dy)
 
-							#Logistic function: f(x) = capacity / (1 + e^-k*(x - midpoint) )
+									#Logistic function: f(x) = capacity / (1 + e^-k*(x - midpoint) )
 
-							def logistic_f1(X, c, k, m):
-								y = c / (1 + np.exp(-k*(X-m)))
-								return y
-							# optimize from scipy
-
-
-							logistic_model1, cov = optimize.curve_fit(logistic_f1,
-															xdata=np.arange(len(df["Confirmed"])+np.argmax(dy)-len(df)),
-															ydata=df["Confirmed"].values[0: np.argmax(dy)],
-															maxfev=10000,
-															p0=[np.max(list(df["Confirmed"])[0: np.argmax(dy)]), 1, 1])
+									def logistic_f1(X, c, k, m):
+										y = c / (1 + np.exp(-k*(X-m)))
+										return y
+									# optimize from scipy
 
 
-							#Logistic function: f(x) = a / (1 + e^(-b*(x-c)))
-
-							def f(x):
-								return logistic_model1[0] / (1 + np.exp(-logistic_model1[1]*(x-logistic_model1[2])))
-
-							y_logistic1 = f(x=np.arange( np.argmax(dy)))
-
-							#Logistic function: f(x) = capacity / (1 + e^-k*(x - midpoint) )
-
-							def logistic_f2(X, c, k, m):
-								y = c / (1 + np.exp(-k*(X-m)))
-								return y
-							# optimize from scipy
+									logistic_model1, cov = optimize.curve_fit(logistic_f1,
+																	xdata=np.arange(len(df["Confirmed"])+np.argmax(dy)-len(df)),
+																	ydata=df["Confirmed"].values[0: np.argmax(dy)],
+																	maxfev=10000,
+																	p0=[np.max(list(df["Confirmed"])[0: np.argmax(dy)]), 1, 1])
 
 
-							logistic_model2, cov = optimize.curve_fit(logistic_f2,
-															xdata=np.arange(len(df["Confirmed"])- np.argmax(dy)),
-															ydata=df["Confirmed"].values[ np.argmax(dy):],
-															maxfev=10000,
-															p0=[np.max(list(df["Confirmed"])[ np.argmax(dy):]), 1, 1])
+									#Logistic function: f(x) = a / (1 + e^(-b*(x-c)))
 
-							#Logistic function: f(x) = a / (1 + e^(-b*(x-c)))
+									def f(x):
+										return logistic_model1[0] / (1 + np.exp(-logistic_model1[1]*(x-logistic_model1[2])))
 
-							def f(x):
-								return logistic_model2[0] / (1 + np.exp(-logistic_model2[1]*(x-logistic_model2[2])))
+									y_logistic1 = f(x=np.arange( np.argmax(dy)))
 
-							y_logistic2 = f(x=np.arange( len(df)-np.argmax(dy)+60)) # 60 ==> Prédiction des cas confirmés dans les futurs 2 mois.
+									#Logistic function: f(x) = capacity / (1 + e^-k*(x - midpoint) )
+
+									def logistic_f2(X, c, k, m):
+										y = c / (1 + np.exp(-k*(X-m)))
+										return y
+									# optimize from scipy
+
+
+									logistic_model2, cov = optimize.curve_fit(logistic_f2,
+																	xdata=np.arange(len(df["Confirmed"])- np.argmax(dy)),
+																	ydata=df["Confirmed"].values[ np.argmax(dy):],
+																	maxfev=10000,
+																	p0=[np.max(list(df["Confirmed"])[ np.argmax(dy):]), 1, 1])
+
+									#Logistic function: f(x) = a / (1 + e^(-b*(x-c)))
+
+									def f(x):
+										return logistic_model2[0] / (1 + np.exp(-logistic_model2[1]*(x-logistic_model2[2])))
+
+									y_logistic2 = f(x=np.arange( len(df)-np.argmax(dy))) # 60 ==> Prédiction des cas confirmés dans les futurs 2 mois.
+									inf="yes"
+								except:
+										inf="no"
+										fl=fl+1
+							k=0
+							while int(y_logistic2[len(y_logistic2)-1]) - int(y_logistic2[len(y_logistic2)-2]) !=0 :
+								k=k+1
+								y_logistic2 = f(x=np.arange( len(df)-np.argmax(dy)+k))
 							confirm=list(df["Confirmed"])
-							no=[np.nan for i in range(len(df),len(df)+60)]
+							no=[np.nan for i in range(len(df),len(df)+k)]
 							confirm.extend(no)
-							index=[i for i in range(len(df)+60)]
+							index=[i for i in range(len(df)+k)]
 							log=[]
 							log.extend(y_logistic1)
 							log.extend(y_logistic2)
 							date=d
+							cases=list(df["Difference"])
+							cases.append(abs(list(df["Confirmed"])[-1]-log[len(list(df["Confirmed"]))]))
+							ll=list(np.diff(log[len(list(df["Confirmed"])):]))
+							cases.extend(ll)
 
 							fin=date[-1]
-							for i in range(60):
+							for i in range(k):
 								k=fin+timedelta(days=i+1)
 								date.append(k)
 							log_df = pd.DataFrame(list(zip(index,date, confirm,log)),
 										columns =['index', "Date",'Confirmed',"Predicted"])
-							st.subheader("☞ Logistic Model "+select1)
+							st.subheader("☞ Logistic Model ")
 							st.markdown("")
 
 							st.markdown("The models based on mathematical statistics, machine learning and deep learning have been applied to the prediction of time series of epidemic development. Logistic is often used in regression fitting of time series data due to its simple principle and efficient calculation. For example, in the Coronavirus case, Logistic growth is characterized by a slow increase in growth at the beginning, fast growth phase approaching the peak of the incidence curve, and a slow growth phase approaching the end of the outbreak (the maximum of infections).")
+							st.markdown("**Logistic Function :**")
+							image = Image.open("lf1.png")
+							st.image(image,
+							use_column_width=True)
+							st.markdown("**Modeling "+ select1+" COVID-19 Cumulative Confirmed Cases:**")
+							st.markdown("**An inflection point** is a point in a graph at which the concavity changes, it represents also an event that results in a significant change in the progress of a company, industry, sector, economy... and can be considered a turning point after which a dramatic change, with either positive or negative results, is expected to result.")
+							st.markdown("To model the evolution of confirmed cases we use 2 logistic funtions:")
+							#Logistic function: f(x) = a / (1 + e^(-b*(x-c)))
+							a1=str(round(logistic_model1[0],2))
+							b1=str(round(logistic_model1[1],2))
+							c1=str(round(logistic_model1[2],2))
+							st.markdown(" **+**  f1(x)="+a1+"/(1+e^(-"+b1+"*(x-"+c1+")))")
+
+							a2=str(round(logistic_model2[0],2))
+							b2=str(round(logistic_model2[1],2))
+							c2=str(round(logistic_model2[2],2))
+							st.markdown("  **+** f2(x)="+a2+"/(1+e^(-"+b2+"*(x-"+c2+")))")
+							correlation_matrix = np.corrcoef(log[0:len(df)],list(log_df["Confirmed"])[0:len(df)] )
+							correlation_xy = correlation_matrix[0,1]
+							r_squared = correlation_xy**2
+							r2="       **R²** = "+ str(round(r_squared*100,2))+"%"
+							st.markdown(r2)
+
+
+
+
 
 							fig = go.Figure()
+							fig_case=go.Figure()
 
-
+							fig2=go.Figure()
 							reference_line = go.Scatter(x=list(log_df["Date"]),
 														y= list(log_df["Confirmed"]),
 														mode="lines",
@@ -697,6 +1449,14 @@ def main():
 														name="Confimed cases",
 														showlegend=True)
 							fig.add_trace(reference_line)
+							reference_line2 = go.Scatter(x=list(log_df["Date"])[0:len(df)],
+														y= list(log_df["Confirmed"])[0:len(df)],
+														mode="lines",
+														line=go.scatter.Line(color="blue"),
+														name="Confimed cases",
+														showlegend=True)
+							fig2.add_trace(reference_line2)
+
 
 							reference_line = go.Scatter(x=date,
 														y=log,
@@ -705,16 +1465,62 @@ def main():
 														name="Predicted",
 														showlegend=True)
 							fig.add_trace(reference_line)
+
+							fig2.add_trace(go.Line(name="Logistic Function 1", x=date[0:len(y_logistic1)], y=y_logistic1))
+							fig_case.add_trace(go.Bar(name="New cases per Day", x=date, y=cases))
+							fig2.add_trace(go.Line(name="Logistic Function 2", x=date[len(y_logistic1):len(df)], y=y_logistic2[0:len(df)]))
+
+
+							a1=list(log_df["Date"])[np.argmax(dy)]
+							l1=[]
+							l1.append(a1)
+							a2=list(log_df["Confirmed"])[np.argmax(dy)]
+							l2=[]
+							l2.append(a2)
+
+							fig2.add_trace(go.Line(name="Inflection point", x=l1,y=l2))
+
 							fig.update_layout(
+							showlegend=True,
+
 
 									xaxis_title="Date",
-									yaxis_title="Logistic",
 									plot_bgcolor='white'
 								)
 
+							fig2.update_layout(
+							showlegend=True,
+
+
+									xaxis_title="Date",
+									plot_bgcolor='white'
+								)
+
+							st.plotly_chart(fig2)
+
+
+							fig_case.update_layout(
+							showlegend=True,
+
+
+									xaxis_title="Date",
+									plot_bgcolor='white'
+								)
+
+
+							st.markdown("**Predict the end date of Covid-19 in "+select1+"**")
+							st.markdown("The graphical representaion below shows the end date of covid-19 and the total number of confirmed cases in  "+select1)
+
 							st.plotly_chart(fig)
-						except:
-							print("Something went wrong")
+							st.markdown('**The end date: **'+date[-1].strftime("%Y-%m-%d"))
+							st.markdown('**The total number of confirmed cases : **'+str(int(log[-1])))
+							st.markdown("")
+							st.markdown("** 📊 The number of new cases per day **")
+							st.markdown("We can extract and predict the number of new cases per day using logistic model:")
+							st.plotly_chart(fig_case)
+
+						#except:
+							#print("Something went wrong")
 
 
 					#R0 simplist method
@@ -788,12 +1594,14 @@ def main():
 							dt=list(data.Date)[ind1:ind2+1]
 							data_per=pd.DataFrame(list(zip(dt,R0_sim)),
 								columns =['Date',"R0_Simpliste"])
-							fig = px.line(data_per,x="Date", y="R0_Simpliste")
-
+							fig = go.Figure()
+							fig.add_trace(go.Line(name="R0 - Simplistic Method", x=list(data_per['Date']), y=list(data_per['R0_Simpliste'])))
 							fig.update_layout(
+							showlegend=True,
+
 							plot_bgcolor='white',
 							xaxis_title="Date",
-							yaxis_title="R0_Simp"
+							yaxis_title="R0 Simplistic"
 						)
 							reference_line = go.Scatter(x=list(data_per['Date']),
 												y=[1 for i in range(len(dt))],
@@ -838,8 +1646,7 @@ def main():
 
 							plt.title("R0_Simpliste "+select1)
 							plt.legend(loc='best')
-
-							plt.savefig("R0_Sim.jpg")
+							plt.savefig('R0_Sim.jpg')
 							image = Image.open('R0_Sim.jpg')
 							st.image(image, caption='R0_Simplist '+select1,
 							use_column_width=True)
@@ -1024,12 +1831,14 @@ def main():
 							dt=list(result.index)[ind1:ind2+1]
 							data_per=pd.DataFrame(list(zip(dt,R0_BR,coun)),
 								columns =['Date',"R0","Country/Region"])
-							fig = px.line(data_per,x="Date", y="R0")
-
+							fig = go.Figure()
+							fig.add_trace(go.Line(name="R0 - Bettencourt & Rebeiro ", x=list(data_per['Date']), y=list(data_per['R0'])))
 							fig.update_layout(
+							showlegend=True,
+
 
 									xaxis_title="Date",
-									yaxis_title="R0_Bettencourt&Rebeiro",
+									yaxis_title="R0_Bettencourt & Rebeiro",
 									plot_bgcolor='white'
 								)
 							reference_line = go.Scatter(x=list(data_per['Date']),
@@ -1073,7 +1882,7 @@ def main():
 							plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="Régression Linéaire")
 							# Save graph to file.
 							plt.xlabel('Date')
-							
+							plt.legend(loc='best')
 							plt.savefig('R0_B&R.jpg')
 
 
@@ -1123,9 +1932,12 @@ def main():
 
 							data['Country']=[select1 for i in range(len(l))]
 							data.to_excel("closure_time.xlsx")
-							fig = px.bar(data,x="Date", y="closure_time")
-
+							fig = go.Figure()
+							fig.add_trace(go.Line(name="Closure Time ", x=list(data['Date']), y=list(data['closure_time'])))
 							fig.update_layout(
+							showlegend=True,
+
+
 
 									xaxis_title="Date",
 									yaxis_title="Closure Time",
@@ -1147,15 +1959,15 @@ def main():
 
 							df = pd.read_excel("Covid.xlsx")
 							df=df[df["Country/Region"]==select1]
-							dr = pd.read_excel("R0_sim.xlsx")
+							#dr = pd.read_excel("R0_sim.xlsx")
 							#Convert Date column to date type:
 
-							d=list(dr["Date"])
+							#d=list(dr["Date"])
 							l=[]
 							from datetime import datetime
-							for i in range(len(d)):
-								l.append(datetime.strptime(d[i], '%d-%m-%Y'))
-							dr["Date"]=l
+							#for i in range(len(d)):
+								#l.append(datetime.strptime(d[i], '%d-%m-%Y'))
+							#dr["Date"]=l
 
 
 
@@ -1178,12 +1990,12 @@ def main():
 							#st.write(dates[0])
 							#r0["Date"]=dates
 
-							n1=list(data["date"]).index(list(dr['Date'])[0])
-							n2=list(data["date"]).index(list(dr['Date'])[-1])
+							#n1=list(data["date"]).index(list(dr['Date'])[0])
+							#n2=list(data["date"]).index(list(dr['Date'])[-1])
 							#st.write(n1)
 							#st.write(n2)
 
-							data=data[n1:n2+1]
+							#data=data[n1:n2+1]
 							IRR=[]
 							DoubT=[]
 							l=list(data["Confirmed"])
@@ -1249,6 +2061,8 @@ def main():
 								st.markdown("")
 								st.markdown("**The doubling time of an epidemic **  is the period of time required for the number of cases in the epidemic to double.")
 								fig= go.Figure()
+
+
 								reference_line = go.Scatter(x=list(data1["date"]),
 															y=list(data1["Doubling Time"]),
 															mode="lines",
@@ -1281,10 +2095,13 @@ def main():
 								st.subheader("📉 Incidence Rate Ratio (IRR) in "+select1)
 								st.markdown('')
 								st.markdown('Incidence measures the proportion of the population affected by the disease at a given time, it is one of the two most used indicators in epidemiology to assess the frequency and the spead of disease.')
-								fig = px.line(data,x="date", y='IRR')
-
-
+								fig = go.Figure()
+								fig.add_trace(go.Line(name="IRR ", x=list(data['date']), y=list(data['IRR'])))
 								fig.update_layout(
+									showlegend=True,
+
+
+
 
 										xaxis_title="Date",
 										yaxis_title="IRR",
@@ -1326,10 +2143,14 @@ def main():
 							dd=df.set_index('Date').join(dg.set_index('Date'))
 							dd['Date']=dd.index
 							mes=list(dd['_MEASURE'])
+							fig = go.Figure()
+							fig.add_trace(go.Bar(name="New cases per day ", x=list(dd['Date']), y=list(dd['Difference']),text=list(dd['COMMENTS'])))
 
-							fig = px.bar(dd,x="Date", y="Difference",text='COMMENTS'
 
-										)
+
+							#fig = px.bar(dd,x="Date", y="Difference",text='COMMENTS'
+
+										#)
 							j=0
 							com=[]
 							for i in range(len(mes)):
@@ -1376,6 +2197,7 @@ def main():
 									opacity=0.9
 								))
 							fig.update_layout(
+								showlegend=True,
 
 									xaxis_title="Date",
 									yaxis_title="New cases",
@@ -1388,10 +2210,20 @@ def main():
 							print("Something went wrong")
 
 
-						
-			else :
+
+
+
+
+
+
+
+
+
+
+
+			else:
 				st.warning("Incorrect Username/Password")
-				
+
 
 
 

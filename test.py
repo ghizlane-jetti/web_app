@@ -1129,7 +1129,7 @@ def main():
 						st.markdown("")
 						st.subheader("Covid-19 testing:")
 						st.markdown("Testing for COVID-19 involves inserting a 6-inch long swab (like a long Q-tip) into the cavity between the nose and mouth (nasopharyngeal swab) for 15 seconds and rotating it several times. The swabbing is then repeated on the other side of the nose to make sure enough material is collected. The swab is then inserted into a container and sent to a lab for testing.")
-						image = Image.open("test.png")
+						image = Image.open("test.jpg")
 						st.image(image,
 							use_column_width=True)
 						st.markdown("Each country does a specific number of tests every day in order to find out how the virus is spreading and try to stop the transmission of the disease. ")
@@ -1420,16 +1420,16 @@ def main():
 							a1=str(round(logistic_model1[0],2))
 							b1=str(round(logistic_model1[1],2))
 							c1=str(round(logistic_model1[2],2))
-							st.markdown(" **+**  f1(x)="+a1+"/(1+e^(-"+b1+"*(x-"+c1+")))")
+							st.markdown(" **+**  f1(x)="+a1+"/(1+e^(-"+b1+"*(x- ("+c1+"))))")
 
 							a2=str(round(logistic_model2[0],2))
 							b2=str(round(logistic_model2[1],2))
 							c2=str(round(logistic_model2[2],2))
-							st.markdown("  **+** f2(x)="+a2+"/(1+e^(-"+b2+"*(x-"+c2+")))")
+							st.markdown("  **+** f2(x)="+a2+"/(1+e^(-"+b2+"*(x- ("+c2+"))))")
 							correlation_matrix = np.corrcoef(log[0:len(df)],list(log_df["Confirmed"])[0:len(df)] )
 							correlation_xy = correlation_matrix[0,1]
 							r_squared = correlation_xy**2
-							r2="       **R²** = "+ str(round(r_squared*100,2))+"%"
+							r2="       **R-squared (R²)** = "+ str(round(r_squared*100,2))+"%"
 							st.markdown(r2)
 
 
@@ -1646,7 +1646,7 @@ def main():
 							plt.legend(loc='best')
 							plt.savefig('R0_Sim.jpg')
 							image = Image.open('R0_Sim.jpg')
-							st.image(image, caption='R0_Simplist '+select1,
+							st.image(image, caption='R0_Simplistic '+select1,
 							use_column_width=True)
 
 							#Downoad data

@@ -320,10 +320,8 @@ def main():
 				if select0=="Somalia Coronavirus":
 					st.markdown('Please select your file extension')
 					ty=['XLSX','CSV']
-                    			rad_types = st.radio(label="", options=ty)
-                    			uploaded_file = st.file_uploader("Choose a XLSX or CSV file", type=["xlsx","csv"])
-
-
+					rad_types = st.radio(label="", options=ty)
+					uploaded_file = st.file_uploader("Choose a XLSX or CSV file", type=["xlsx","csv"])
 					if uploaded_file:
 						if rad_types=='XLSX':
 							df = pd.read_excel(uploaded_file)

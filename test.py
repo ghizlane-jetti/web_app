@@ -1188,7 +1188,7 @@ def main():
 
 							st.markdown("The models based on mathematical statistics, machine learning and deep learning have been applied to the prediction of time series of epidemic development. Logistic is often used in regression fitting of time series data due to its simple principle and efficient calculation. For example, in the Coronavirus case, Logistic growth is characterized by a slow increase in growth at the beginning, fast growth phase approaching the peak of the incidence curve, and a slow growth phase approaching the end of the outbreak (the maximum of infections).")
 							st.markdown("**Logistic Function :**")
-							image = Image.open("lf1.png")
+							image = Image.open("lf1.jpg")
 							st.image(image,
 							use_column_width=True)
 							st.markdown("**Modeling "+ select_reg+" COVID-19 Cumulative Confirmed Cases:**")
@@ -2396,7 +2396,7 @@ def main():
 
 							st.markdown("The models based on mathematical statistics, machine learning and deep learning have been applied to the prediction of time series of epidemic development. Logistic is often used in regression fitting of time series data due to its simple principle and efficient calculation. For example, in the Coronavirus case, Logistic growth is characterized by a slow increase in growth at the beginning, fast growth phase approaching the peak of the incidence curve, and a slow growth phase approaching the end of the outbreak (the maximum of infections).")
 							st.markdown("**Logistic Function :**")
-							image = Image.open("lf1.png")
+							image = Image.open("lf1.jpg")
 							st.image(image,
 							use_column_width=True)
 							st.markdown("**Modeling "+ select1+" COVID-19 Cumulative Confirmed Cases:**")

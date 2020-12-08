@@ -314,6 +314,8 @@ def main():
 				c=list((data_cov["Country/Region"]))
 				c=list(np.unique(c))
 				import io
+				from io import BytesIO
+				from io import StringIO
 				select0= st.sidebar.selectbox('Select :', ["Overview","World Data","By country","Country comparison covid-19", "Somalia Coronavirus"], key='2')
 				if select0=="Somalia Coronavirus":
 

@@ -1,3 +1,5 @@
+import streamlit as st
+import pandas as pd
 # Import libraries
 import streamlit as st
 import pandas as pd
@@ -312,7 +314,991 @@ def main():
 				c=list((data_cov["Country/Region"]))
 				c=list(np.unique(c))
 
-				select0= st.sidebar.selectbox('Select :', ["Overview","World Data","By country","Country comparison covid-19"], key='2')
+				select0= st.sidebar.selectbox('Select :', ["Overview","World Data","By country","Country comparison covid-19", "Somalia Coronavirus"], key='2')
+				if select0=="Somalia Coronavirus":
+
+
+					#dso=data_cov[data_cov["Country/Region"]=="Somalia"]
+
+
+					dso=pd.read_excel("somalia_covid.xlsx")
+					dates = list(dso["Date"])
+					da= []
+					for i in dates:
+						da.append("{0:-08d}".format(i))
+
+
+					d=[]
+					for i in da:
+						d.append(datetime.strptime(i, '%Y%m%d'))
+					dso["Date"]=d
+					du=list(np.unique(d))
+					c=list((dso["STATE"]))
+					num=(d[-1]-d[0]).days
+					c=list(np.unique(c))
+					all_cumul=[]
+					all_day=[]
+					reg_cumul=list(dso["Cumulative cases"])
+					reg_day=list(dso["Cases by day"])
+
+					state=["All" for i in du]
+					som=["SOMALIA" for i in du]
+					index=[]
+					for i in du:
+						index=[j for j,val in enumerate(d) if val==i]
+						a=0
+						b=0
+						for k in index:
+							a=a+reg_cumul[k]
+							b=b+reg_day[k]
+						all_cumul.append(a)
+						all_day.append(b)
+					dataf=pd.DataFrame(list(zip(du,som,state,all_cumul,all_day)),columns =['Date',"Country","STATE","Cumulative cases","Cases by day"])
+					dso=dso.append(dataf,ignore_index = True)
+					c.append("All")
+					select_reg= st.sidebar.selectbox('Select a region:',c, key='2')
+					data_reg=dso[dso['STATE']==select_reg]
+					rad=['Confirmed cases',"New cases per day","Logistic Model","R0 (simplistic Method)","R0 (Bettencourt and Rebeiro Method)","Doubling Time","IRR"]
+
+					radio = st.sidebar.radio(label="", options=rad)
+					if radio == "Confirmed cases":
+
+						st.subheader("Confirmed cases:")
+						st.markdown("")
+
+
+						fig = go.Figure()
+						fig.add_trace(go.Bar(name="Confirmed cases", x=list(data_reg['Date']), y=list(data_reg['Cumulative cases'])))
+						fig.update_layout(
+							showlegend=True,
+							xaxis_title="Time (Date)",
+							yaxis_title="Nº of cumulative cases",
+							plot_bgcolor='white'
+
+						)
+
+						st.plotly_chart(fig)
+						st.subheader('Data')
+						st.write(data_reg)
+						data_reg.to_excel("somalia_reg.xlsx")
+						st.markdown(get_binary_file_downloader_html('somalia_reg.xlsx', 'Data'), unsafe_allow_html=True)
+					elif radio=="IRR" or radio=="Doubling Time":
+						try:
+
+							df = data_reg
+
+
+
+
+
+							def irr(d1,dn,c1,cn):
+								irr=(cn/c1)**(1/(dn-d1).days)-1
+
+								return(irr)
+							def DT(irr):
+								p=m.log(2)/m.log(1+irr)
+								return(p)
+							data = pd.DataFrame(df, columns=['Date',"STATE",'Cumulative cases']).set_index('Date')
+
+							x=list(df['Date'])
+
+							data["date"]=x
+							dates = list(df["Date"])
+							#st.write(dates[0])
+							#y=list(r0['Date'])
+							#dates = [datetime.strptime(i1,'%d-%m-%Y') for i1 in y]
+							#st.write(dates[0])
+							#r0["Date"]=dates
+
+							#n1=list(data["date"]).index(list(dr['Date'])[0])
+							#n2=list(data["date"]).index(list(dr['Date'])[-1])
+							#st.write(n1)
+							#st.write(n2)
+
+							#data=data[n1:n2+1]
+							IRR=[]
+							DoubT=[]
+							l=list(data["Cumulative cases"])
+							#n=0
+							#for i in range(len(l)-1):
+								#if l[i]!=l[i+1]:
+									#n=i
+									#break
+							#st.markdown(n)
+							n=44
+
+
+
+							c1=data["Cumulative cases"][n]
+							d1=dates[n]
+							for i in range(n+1,len(data)):
+								cn=data["Cumulative cases"][i]
+								dn=dates[i]
+								if irr(d1,dn,c1,cn)*100==0:
+									IRR.append(0)
+									DoubT.append(0)
+								else:
+
+									IRR.append(irr(d1,dn,c1,cn)*100)
+									DoubT.append(DT(irr(d1,dn,c1,cn)))
+							IRRn=[]
+							for i in range(n+1):
+								IRRn.append(np.nan)
+							IRRn.extend(IRR)
+
+							#st.markdown(IRRn)
+							DoublingTime=[]
+							for i in range(n+1):
+								DoublingTime.append(np.nan)
+							DoublingTime.extend(DoubT)
+							data1=data.copy()
+							data["IRR"]=IRRn
+							data1['Doubling Time']=DoublingTime
+							data.index=[i for i in range(len(data))]
+							data1.index=[i for i in range(len(data1))]
+							#Linear function function: f(x) = a*X+b
+
+							def linear_f(X, a, b):
+								y =a*X+b
+								return y
+							# optimize from scipy
+
+
+							linear_model, cov = optimize.curve_fit(linear_f,
+														xdata=np.arange(len(data1["Doubling Time"])-n-1),
+														ydata=data1["Doubling Time"].values[n+1:],
+														maxfev=10000,
+														p0=[np.max(list(data1["Doubling Time"])[n+1:]), 1])
+
+
+							#linear function: f(x) = a*x+b
+
+							def f(x):
+								return linear_model[0]*x+linear_model[1]
+							y_linear = f(x=np.arange(len(data1)-n-1))
+
+							data1.to_excel("Doubling_Time.xlsx")
+							data.to_excel("IRR.xlsx")
+							a=str(round(linear_model[0],3))
+							b=str(round(linear_model[1],3))
+							x_values = data1["Doubling Time"].values[n+1:]
+							y_values = y_linear
+							correlation_matrix = np.corrcoef(x_values, y_values)
+							correlation_xy = correlation_matrix[0,1]
+							r_squared = correlation_xy**2
+							r2="(R²)= "+ str(round(r_squared,4))
+							if radio=="Doubling Time":
+								st.subheader("📆 Doubling Time in "+select_reg)
+								st.markdown("")
+								st.markdown("**The doubling time of an epidemic **  is the period of time required for the number of cases in the epidemic to double.")
+								fig= go.Figure()
+
+
+								reference_line = go.Scatter(x=list(data1["date"]),
+															y=list(data1["Doubling Time"]),
+															mode="lines",
+															line=go.scatter.Line(color="blue"),
+															name="Doubling Time",
+															showlegend=True)
+								fig.add_trace(reference_line)
+								reference_line = go.Scatter(x=list(data1["date"])[n+1:],
+															y=y_linear,
+															mode="lines",
+															line=go.scatter.Line(color="red"),
+															name="Linear Regression",
+															showlegend=True)
+								fig.add_trace(reference_line)
+
+								fig.update_layout(
+
+										xaxis_title="Date",
+										yaxis_title="Doubling Time",
+										plot_bgcolor='white'
+									)
+								st.write("Linear Regression: f(Time) = "+a+"*X +"+b)
+								st.write("R-squared "+r2)
+								st.plotly_chart(fig)
+								#Downoad data
+
+
+								st.markdown(get_binary_file_downloader_html("Doubling_Time.xlsx", 'Doubling Time Data'), unsafe_allow_html=True)
+							else:
+								st.subheader("📉 Incidence Rate Ratio (IRR) in "+select_reg)
+								st.markdown('')
+								st.markdown('Incidence measures the proportion of the population affected by the disease at a given time, it is one of the two most used indicators in epidemiology to assess the frequency and the spead of disease.')
+								fig = go.Figure()
+								fig.add_trace(go.Line(name="IRR ", x=list(data['date']), y=list(data['IRR'])))
+								fig.update_layout(
+									showlegend=True,
+
+
+
+
+										xaxis_title="Date",
+										yaxis_title="IRR",
+										plot_bgcolor='white'
+									)
+
+								st.plotly_chart(fig)
+								#Downoad data
+
+
+								st.markdown(get_binary_file_downloader_html("IRR.xlsx", 'IRR Data'), unsafe_allow_html=True)
+						except:
+							print("Something went wrong")
+					elif radio=="R0 (simplistic Method)":
+
+
+						try:
+							st.subheader("📈 Evolution of R0 using Simplist Method in "+select_reg)
+							st.markdown("")
+
+							st.markdown("""R0, pronounced “R naught,” is a mathematical term that indicates how contagious an infectious disease is. It’s also referred to as the reproduction number. As an infection is transmitted to new people, it reproduces itself.""")
+
+							st.markdown("""R0 tells you the average number of people who will contract a contagious disease from one person with that disease. It specifically applies to a population of people who were previously free of infection and haven’t been vaccinated.""")
+
+							st.markdown("""For example, if a disease has an R0 of 18, a person who has the disease will transmit it to an average of 18 other people. That replication will continue if no one has been vaccinated against the disease or is already immune to it in their community.""")
+							image = Image.open("r0.png")
+							st.image(image,
+							use_column_width=True)
+							st.markdown("***Period:***")
+							data = pd.DataFrame(df, columns=['Date','Difference']).set_index('Date')
+
+							data['smooth_mean(gauss, win=7)'] = data.iloc[:,0].rolling(7,
+								win_type='gaussian',
+								min_periods=1,
+								center=True).mean(std=2).round()
+							ds=list(data['smooth_mean(gauss, win=7)'])
+							for i in range(len(ds)):
+								if ds[i]==0:
+									ds[i]=np.nan
+							data['smooth_mean(gauss, win=7)']=ds
+							gauss=list(data['smooth_mean(gauss, win=7)'])[9:]
+							l_7=[]
+							for i in range(len(gauss)-6):
+								if  m.isnan(gauss[i])==True or m.isnan(gauss[i+6])==True:
+									l_7.append(np.nan)
+								else:
+									l_7.append(round(gauss[i+6])/round(gauss[i]))
+
+							gauss=list(data['smooth_mean(gauss, win=7)'])[9:]
+							l_4=[]
+							for i in range(len(gauss)-3):
+								if  m.isnan(gauss[i])==True or m.isnan(gauss[i+3])==True :
+									l_4.append(np.nan)
+								else:
+									l_4.append(round(gauss[i+3])/round(gauss[i]))
+							N=len(data)
+							n_4=len(l_4)
+							n_7=len(l_7)
+
+							gauss_4=[]
+							gauss_7=[]
+							for i in range(N-n_4):
+								gauss_4.append(np.nan)
+							gauss_4.extend(l_4)
+
+							for i in range(N-n_7):
+								gauss_7.append(np.nan)
+							gauss_7.extend(l_7)
+							data["Gaussian_R0_4_Days"]=gauss_4
+							data["Gaussian_R0_7_Days"]=gauss_7
+							col = data.loc[: , "Gaussian_R0_4_Days":"Gaussian_R0_7_Days"]
+							data['R0_Simpliste'] = col.mean(axis=1)
+							R0_sim=list(data['R0_Simpliste'])
+							data['Date']=data.index
+							from_date  = st.selectbox('From :', list(data.Date) )
+							ind1=list(data.Date).index(from_date)
+							l2=list(data.Date)[int(ind1)+1:]
+							to_date= st.selectbox('To :',l2  )
+							ind2=list(data.Date).index(to_date)
+							R0_sim=R0_sim[ind1:ind2+1]
+							dt=list(data.Date)[ind1:ind2+1]
+							data_per=pd.DataFrame(list(zip(dt,R0_sim)),
+								columns =['Date',"R0_Simpliste"])
+							fig = go.Figure()
+							fig.add_trace(go.Line(name="R0 - Simplistic Method", x=list(data_per['Date']), y=list(data_per['R0_Simpliste'])))
+							fig.update_layout(
+							showlegend=True,
+
+							plot_bgcolor='white',
+							xaxis_title="Date",
+							yaxis_title="R0 Simplistic"
+						)
+							reference_line = go.Scatter(x=list(data_per['Date']),
+												y=[1 for i in range(len(dt))],
+												mode="lines",
+												line=go.scatter.Line(color="red"),
+
+												showlegend=False)
+							fig.add_trace(reference_line)
+							st.plotly_chart(fig)
+
+							from scipy.signal import argrelextrema
+							data=data_per
+							data['Country']=[select_reg for i in range(len(data))]
+							da=[data['Date'][i].strftime("%d-%m-%Y") for i in range(len(data))]
+							data['Date']=da
+							data.plot(x="Date",y="R0_Simpliste",label="R0", figsize=(14,5), color="m")
+
+
+							peak_indexes = argrelextrema(np.array(list(data['R0_Simpliste'])), np.greater)
+							peak_indexes = peak_indexes[0]
+							plt.axhline(y=1,linestyle='--', color='black')
+
+							# Plot peaks.
+							peak_x = peak_indexes
+							peak_y = np.array(list(data['R0_Simpliste']))[peak_indexes]
+
+							# Find valleys(min).
+							valley_indexes = argrelextrema(np.array(list(data['R0_Simpliste'])), np.less)
+							valley_indexes = valley_indexes[0]
+
+
+							# Plot valleys.
+							valley_x = valley_indexes
+							valley_y =  np.array(list(data['R0_Simpliste']))[valley_indexes]
+
+							reg_x=np.union1d(valley_indexes,peak_indexes)
+							reg_y=np.array(list(data['R0_Simpliste']))[reg_x]
+							plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="linear regression")
+							# Save graph to file.
+							plt.xlabel('Date')
+							plt.legend(loc='best')
+
+							plt.title("R0_Simpliste "+select_reg)
+							plt.legend(loc='best')
+							#path=os.path.abspath(os.getcwd())
+							plt.savefig('R0_Sim.jpg')
+							image = Image.open('R0_Sim.jpg')
+							st.image(image, caption='R0_Simplist '+select_reg,
+							use_column_width=True)
+
+							#Downoad data
+							st.markdown("""""")
+							st.markdown("""**Note: ** World knows both a decrease in the number of new reported cases and an increase in it. In fact, some countries sometimes report zero coronavirus cases for a period of time as China, Somalia... This variance can influence the calculation of R0. That's why you can observe some missing values.    """)
+
+							data_per.to_excel("R0_sim.xlsx")
+
+
+							st.markdown(get_binary_file_downloader_html('R0_sim.xlsx', 'R0_simp Data'), unsafe_allow_html=True)
+						except:
+							print("Something went wrong")
+
+					elif radio=="R0 (Bettencourt and Rebeiro Method)":
+
+						#st.write("#### :globe_with_meridians: Country : **{}**".format(str(indi)))
+
+
+						try:
+							st.subheader("📈 Evolution of R0 using Bettencourt & Rebeiro Method in "+select_reg)
+							st.markdown("")
+
+							st.markdown("""R0, pronounced “R naught,” is a mathematical term that indicates how contagious an infectious disease is. It’s also referred to as the reproduction number. As an infection is transmitted to new people, it reproduces itself.""")
+
+							st.markdown("""R0 tells you the average number of people who will contract a contagious disease from one person with that disease. It specifically applies to a population of people who were previously free of infection and haven’t been vaccinated.""")
+
+							st.markdown("""For example, if a disease has an R0 of 18, a person who has the disease will transmit it to an average of 18 other people. That replication will continue if no one has been vaccinated against the disease or is already immune to it in their community.""")
+							image = Image.open("r0.png")
+							st.image(image,
+							use_column_width=True)
+							st.markdown("***Period:***")
+
+							df=data_reg
+
+							df.to_excel("Data_covid.xlsx")
+							url = 'Data_covid.xlsx'
+							df = pd.read_excel(url,
+												usecols=['Date', 'STATE', 'Cases by day'],
+												index_col=[1,0],
+												squeeze=True).sort_index()
+							country_name = select_reg
+							# We create an array for every possible value of Rt
+							R_T_MAX = 12
+							r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
+
+							def prepare_cases(cases, cutoff=5):
+								new_cases = cases
+
+								smoothed = new_cases.rolling(7,
+									win_type='gaussian',
+									min_periods=1,
+									center=True).mean(std=2).round()
+
+								idx_start = np.searchsorted(smoothed, cutoff)
+
+								smoothed = smoothed.iloc[idx_start:]
+								original = new_cases.loc[smoothed.index]
+
+								return original, smoothed
+							cases = df.xs(country_name).rename(f"{country_name} cases")
+
+							original, smoothed = prepare_cases(cases)
+							GAMMA = 1/7
+							def get_posteriors(sr, sigma=0.15):
+
+								# (1) Calculate Lambda
+								lam = sr[:-1].values * np.exp(GAMMA * (r_t_range[:, None] - 1))
+
+
+							# (2) Calculate each day's likelihood
+								likelihoods = pd.DataFrame(
+									data = sps.poisson.pmf(sr[1:].values, lam),
+									index = r_t_range,
+									columns = sr.index[1:])
+
+							# (3) Create the Gaussian Matrix
+								process_matrix = sps.norm(loc=r_t_range,
+															scale=sigma
+															).pdf(r_t_range[:, None])
+
+							# (3a) Normalize all rows to sum to 1
+								process_matrix /= process_matrix.sum(axis=0)
+
+							# (4) Calculate the initial prior
+							#prior0 = sps.gamma(a=4).pdf(r_t_range)
+								prior0 = np.ones_like(r_t_range)/len(r_t_range)
+								prior0 /= prior0.sum()
+
+							# Create a DataFrame that will hold our posteriors for each day
+							# Insert our prior as the first posterior.
+								posteriors = pd.DataFrame(
+									index=r_t_range,
+									columns=sr.index,
+									data={sr.index[0]: prior0}
+								)
+
+							# We said we'd keep track of the sum of the log of the probability
+							# of the data for maximum likelihood calculation.
+								log_likelihood = 0.0
+
+							# (5) Iteratively apply Bayes' rule
+								for previous_day, current_day in zip(sr.index[:-1], sr.index[1:]):
+
+								#(5a) Calculate the new prior
+									current_prior = process_matrix @ posteriors[previous_day]
+
+								#(5b) Calculate the numerator of Bayes' Rule: P(k|R_t)P(R_t)
+									numerator = likelihoods[current_day] * current_prior
+
+								#(5c) Calcluate the denominator of Bayes' Rule P(k)
+									denominator = np.sum(numerator)
+									if denominator!=0:
+
+								# Execute full Bayes' Rule
+										posteriors[current_day] = numerator/denominator
+
+								# Add to the running sum of log likelihoods
+
+										log_likelihood += np.log(denominator)
+
+								return posteriors, log_likelihood
+
+							# Note that we're fixing sigma to a value just for the example
+							posteriors, log_likelihood = get_posteriors(smoothed, sigma=.25)
+							posteriors=posteriors.dropna(axis=1, how='all')
+							def highest_density_interval(pmf, p=.9, debug=False):
+							# If we pass a DataFrame, just call this recursively on the columns
+								if(isinstance(pmf, pd.DataFrame)):
+									return pd.DataFrame([highest_density_interval(pmf[col], p=p) for col in pmf],
+													index=pmf.columns)
+
+								cumsum = np.cumsum(pmf.values)
+
+							# N x N matrix of total probability mass for each low, high
+								total_p = cumsum - cumsum[:, None]
+
+							# Return all indices with total_p > p
+								lows, highs = (total_p > p).nonzero()
+
+							# Find the smallest range (highest density)
+								best = (highs - lows).argmin()
+
+								low = pmf.index[lows[best]]
+								high = pmf.index[highs[best]]
+
+								return pd.Series([low, high],
+												index=[f'Low_{p*100:.0f}',
+													f'High_{p*100:.0f}'])
+
+							hdi = highest_density_interval(posteriors, debug=True)
+							# Note that this takes a while to execute - it's not the most efficient algorithm
+							hdis = highest_density_interval(posteriors, p=.9)
+
+							most_likely = posteriors.idxmax().rename('ML')
+
+							# Look into why you shift -1
+							result = pd.concat([most_likely, hdis], axis=1)
+
+
+							index = pd.to_datetime(result['ML'].index.get_level_values('Date'))
+							values = result['ML'].values
+							R0 = pd.DataFrame(list(zip(list(index), list(values))),
+										columns =['Date', 'R0'])
+							R0.index=R0.Date
+							r0=R0.copy()
+
+							from_date  = st.selectbox('From :', list(result.index) )
+							ind1=list(result.index).index(from_date)
+							l2=list(result.index)[ind1+1:]
+							to_date= st.selectbox('To :',l2  )
+							ind2=list(result.index).index(to_date)
+							coun=[select_reg for i in range(ind1,ind2+1)]
+							R0_BR=list(values)[ind1:ind2+1]
+							dt=list(result.index)[ind1:ind2+1]
+							data_per=pd.DataFrame(list(zip(dt,R0_BR,coun)),
+								columns =['Date',"R0","STATE"])
+							fig = go.Figure()
+							fig.add_trace(go.Line(name="R0 - Bettencourt & Rebeiro ", x=list(data_per['Date']), y=list(data_per['R0'])))
+							fig.update_layout(
+							showlegend=True,
+
+
+									xaxis_title="Date",
+									yaxis_title="R0_Bettencourt & Rebeiro",
+									plot_bgcolor='white'
+								)
+							reference_line = go.Scatter(x=list(data_per['Date']),
+														y=[1 for i in range(len(list(data_per["Date"])))],
+														mode="lines",
+														line=go.scatter.Line(color="red"),
+
+														showlegend=False)
+							fig.add_trace(reference_line)
+							st.plotly_chart(fig)
+							R0.index=R0.Date
+							R0=data_per
+							from scipy.signal import argrelextrema
+
+							l=[R0["Date"][i].strftime("%d-%m-%Y") for i in range(len(R0))]
+							R0["Date"]=l
+							n=len(l)
+
+							R0.plot(x="Date",y="R0",label="R0_Bettencourt_&_Ribeiro", figsize=(14,5), color="m")
+							R0.to_excel("Data_Bettencourt_&_Ribeiro_"+select_reg+".xlsx")
+
+							peak_indexes = argrelextrema(np.array(list(R0['R0'])), np.greater)
+							peak_indexes = peak_indexes[0]
+							plt.axhline(y=1,linestyle='--', color='black')
+
+							# Plot peaks.
+							peak_x = peak_indexes
+							peak_y = np.array(list(R0['R0']))[peak_indexes]
+
+							# Find valleys(min).
+							valley_indexes = argrelextrema(np.array(list(R0['R0'])), np.less)
+							valley_indexes = valley_indexes[0]
+
+
+							# Plot valleys.
+							valley_x = valley_indexes
+							valley_y =  np.array(list(R0['R0']))[valley_indexes]
+
+							reg_x=np.union1d(valley_indexes,peak_indexes)
+							reg_y=np.array(list(R0['R0']))[reg_x]
+							plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="Régression Linéaire")
+							# Save graph to file.
+							plt.xlabel('Date')
+							plt.legend(loc='best')
+							#path=os.path.abspath(os.getcwd())
+							plt.savefig('R0_B&R.jpg')
+
+
+							image = Image.open('R0_B&R.jpg')
+							st.image(image, caption='R0_Bettencourt & Rebeiro '+select_reg,
+									use_column_width=True)
+							st.markdown("""""")
+							st.markdown("""**Note: ** World knows both a decrease in the number of new reported cases and an increase in it. In fact, some countries sometimes report zero coronavirus cases for a period of time as China, Somalia... This variance can influence the calculation of R0. That's why you can observe some missing values.    """)
+							#Downoad data
+
+
+							st.markdown(get_binary_file_downloader_html("Data_Bettencourt_&_Ribeiro_"+select_reg+".xlsx", 'R0_Bettencourt& Rebeiro Data'), unsafe_allow_html=True)
+
+						except:
+							st.markdown("Sorry, something went wrong you can visualize R0 using Simplistic Method. ")
+						#st.write(type(list(data_per['Date'])[0]))
+					if radio == "New cases per day":
+
+						st.markdown("")
+						st.subheader("New cases:")
+						data = pd.DataFrame(data_reg, columns=['Date','Cases by day']).set_index('Date')
+
+
+						data['Smoothed'] = data.iloc[:,0].rolling(7,
+								win_type='gaussian',
+								min_periods=1,
+								center=True).mean(std=2).round()
+
+
+
+						fig = go.Figure()
+						fig.add_trace(go.Bar(name="Cases by day", x=list(data.index), y=list(data['Cases by day'])))
+						fig.add_trace(go.Line(name="Time serie of infection (Smoothed)", x=list(data.index), y=list(data['Smoothed'])))
+						data.to_excel("data.xlsx")
+
+						fig.update_layout(
+							showlegend=True,
+
+							xaxis_title="Time (Date)",
+							yaxis_title="Nº of Cases by day",
+							plot_bgcolor='white'
+
+						)
+
+						st.plotly_chart(fig)
+						st.subheader('Data')
+						st.write(data)
+						st.markdown(get_binary_file_downloader_html('data.xlsx', 'Data'), unsafe_allow_html=True)
+					elif radio=="R0 (simplistic Method)":
+
+
+						try:
+							st.subheader("📈 Evolution of R0 using Simplist Method in "+select_reg)
+							st.markdown("")
+
+							st.markdown("""R0, pronounced “R naught,” is a mathematical term that indicates how contagious an infectious disease is. It’s also referred to as the reproduction number. As an infection is transmitted to new people, it reproduces itself.""")
+
+							st.markdown("""R0 tells you the average number of people who will contract a contagious disease from one person with that disease. It specifically applies to a population of people who were previously free of infection and haven’t been vaccinated.""")
+
+							st.markdown("""For example, if a disease has an R0 of 18, a person who has the disease will transmit it to an average of 18 other people. That replication will continue if no one has been vaccinated against the disease or is already immune to it in their community.""")
+							image = Image.open("r0.png")
+							st.image(image,
+							use_column_width=True)
+							st.markdown("***Period:***")
+							df=data_reg
+							data = pd.DataFrame(df, columns=['Date','Cases by day']).set_index('Date')
+
+							data['smooth_mean(gauss, win=7)'] = data.iloc[:,0].rolling(7,
+								win_type='gaussian',
+								min_periods=1,
+								center=True).mean(std=2).round()
+							ds=list(data['smooth_mean(gauss, win=7)'])
+							for i in range(len(ds)):
+								if ds[i]==0:
+									ds[i]=np.nan
+							data['smooth_mean(gauss, win=7)']=ds
+							gauss=list(data['smooth_mean(gauss, win=7)'])[9:]
+							l_7=[]
+							for i in range(len(gauss)-6):
+								if  m.isnan(gauss[i])==True or m.isnan(gauss[i+6])==True:
+									l_7.append(np.nan)
+								else:
+									l_7.append(round(gauss[i+6])/round(gauss[i]))
+
+							gauss=list(data['smooth_mean(gauss, win=7)'])[9:]
+							l_4=[]
+							for i in range(len(gauss)-3):
+								if  m.isnan(gauss[i])==True or m.isnan(gauss[i+3])==True :
+									l_4.append(np.nan)
+								else:
+									l_4.append(round(gauss[i+3])/round(gauss[i]))
+							N=len(data)
+							n_4=len(l_4)
+							n_7=len(l_7)
+
+							gauss_4=[]
+							gauss_7=[]
+							for i in range(N-n_4):
+								gauss_4.append(np.nan)
+							gauss_4.extend(l_4)
+
+							for i in range(N-n_7):
+								gauss_7.append(np.nan)
+							gauss_7.extend(l_7)
+							data["Gaussian_R0_4_Days"]=gauss_4
+							data["Gaussian_R0_7_Days"]=gauss_7
+							col = data.loc[: , "Gaussian_R0_4_Days":"Gaussian_R0_7_Days"]
+							data['R0_Simpliste'] = col.mean(axis=1)
+							R0_sim=list(data['R0_Simpliste'])
+							data['Date']=data.index
+							from_date  = st.selectbox('From :', list(data.Date) )
+							ind1=list(data.Date).index(from_date)
+							l2=list(data.Date)[int(ind1)+1:]
+							to_date= st.selectbox('To :',l2  )
+							ind2=list(data.Date).index(to_date)
+							R0_sim=R0_sim[ind1:ind2+1]
+							dt=list(data.Date)[ind1:ind2+1]
+							data_per=pd.DataFrame(list(zip(dt,R0_sim)),
+								columns =['Date',"R0_Simpliste"])
+							fig = go.Figure()
+							fig.add_trace(go.Line(name="R0 - Simplistic Method", x=list(data_per['Date']), y=list(data_per['R0_Simpliste'])))
+							fig.update_layout(
+							showlegend=True,
+
+							plot_bgcolor='white',
+							xaxis_title="Date",
+							yaxis_title="R0 Simplistic"
+						)
+							reference_line = go.Scatter(x=list(data_per['Date']),
+												y=[1 for i in range(len(dt))],
+												mode="lines",
+												line=go.scatter.Line(color="red"),
+
+												showlegend=False)
+							fig.add_trace(reference_line)
+							st.plotly_chart(fig)
+
+							from scipy.signal import argrelextrema
+							data=data_per
+							data['Country']=[select_reg for i in range(len(data))]
+							da=[data['Date'][i].strftime("%d-%m-%Y") for i in range(len(data))]
+							data['Date']=da
+							data.plot(x="Date",y="R0_Simpliste",label="R0", figsize=(14,5), color="m")
+
+
+							peak_indexes = argrelextrema(np.array(list(data['R0_Simpliste'])), np.greater)
+							peak_indexes = peak_indexes[0]
+							plt.axhline(y=1,linestyle='--', color='black')
+
+							# Plot peaks.
+							peak_x = peak_indexes
+							peak_y = np.array(list(data['R0_Simpliste']))[peak_indexes]
+
+							# Find valleys(min).
+							valley_indexes = argrelextrema(np.array(list(data['R0_Simpliste'])), np.less)
+							valley_indexes = valley_indexes[0]
+
+
+							# Plot valleys.
+							valley_x = valley_indexes
+							valley_y =  np.array(list(data['R0_Simpliste']))[valley_indexes]
+
+							reg_x=np.union1d(valley_indexes,peak_indexes)
+							reg_y=np.array(list(data['R0_Simpliste']))[reg_x]
+							plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="linear regression")
+							# Save graph to file.
+							plt.xlabel('Date')
+							plt.legend(loc='best')
+
+							plt.title("R0_Simpliste "+select_reg)
+							plt.legend(loc='best')
+							#path=os.path.abspath(os.getcwd())
+							plt.savefig('R0_Sim.jpg')
+							image = Image.open('R0_Sim.jpg')
+							st.image(image, caption='R0_Simplist '+select_reg,
+							use_column_width=True)
+
+							#Downoad data
+							st.markdown("""""")
+							st.markdown("""**Note: ** World knows both a decrease in the number of new reported cases and an increase in it. In fact, some countries sometimes report zero coronavirus cases for a period of time as China, Somalia... This variance can influence the calculation of R0. That's why you can observe some missing values.    """)
+
+							data_per.to_excel("R0_sim.xlsx")
+
+
+							st.markdown(get_binary_file_downloader_html('R0_sim.xlsx', 'R0_simp Data'), unsafe_allow_html=True)
+						except:
+							print("Something went wrong")
+
+
+					elif radio=="Logistic Model":
+
+						#try:
+							df=data_reg
+							df.index=[i for i in range(len(df))]
+
+							x = df["Cumulative cases"].index
+							y =df["Cumulative cases"].values
+
+							# inflection point estimation
+							inf="no"
+							fl=0
+							while(inf=="no"):
+								try:
+									dy = np.diff(y,n=1+fl) #  derivative
+									idx_max_dy = np.argmax(dy)
+
+									#Logistic function: f(x) = capacity / (1 + e^-k*(x - midpoint) )
+
+									def logistic_f1(X, c, k, m):
+										y = c / (1 + np.exp(-k*(X-m)))
+										return y
+									# optimize from scipy
+
+
+									logistic_model1, cov = optimize.curve_fit(logistic_f1,
+																	xdata=np.arange(len(df["Cumulative cases"])+np.argmax(dy)-len(df)),
+																	ydata=df["Cumulative cases"].values[0: np.argmax(dy)],
+																	maxfev=10000,
+																	p0=[np.max(list(df["Cumulative cases"])[0: np.argmax(dy)]), 1, 1])
+
+
+									#Logistic function: f(x) = a / (1 + e^(-b*(x-c)))
+
+									def f(x):
+										return logistic_model1[0] / (1 + np.exp(-logistic_model1[1]*(x-logistic_model1[2])))
+
+									y_logistic1 = f(x=np.arange( np.argmax(dy)))
+
+									#Logistic function: f(x) = capacity / (1 + e^-k*(x - midpoint) )
+
+									def logistic_f2(X, c, k, m):
+										y = c / (1 + np.exp(-k*(X-m)))
+										return y
+									# optimize from scipy
+
+
+									logistic_model2, cov = optimize.curve_fit(logistic_f2,
+																	xdata=np.arange(len(df["Cumulative cases"])- np.argmax(dy)),
+																	ydata=df["Cumulative cases"].values[ np.argmax(dy):],
+																	maxfev=10000,
+																	p0=[np.max(list(df["Cumulative cases"])[ np.argmax(dy):]), 1, 1])
+
+									#Logistic function: f(x) = a / (1 + e^(-b*(x-c)))
+
+									def f(x):
+										return logistic_model2[0] / (1 + np.exp(-logistic_model2[1]*(x-logistic_model2[2])))
+
+									y_logistic2 = f(x=np.arange( len(df)-np.argmax(dy))) # 60 ==> Prédiction des cas confirmés dans les futurs 2 mois.
+									inf="yes"
+								except:
+										inf="no"
+										fl=fl+1
+							k=0
+							#st.markdown(y_logistic2)
+							while int(y_logistic2[len(y_logistic2)-1]) - int(y_logistic2[len(y_logistic2)-2]) !=0 :
+								k=k+1
+								y_logistic2 = f(x=np.arange( len(df)-np.argmax(dy)+k))
+							#st.markdown(k)
+							confirm=list(df["Cumulative cases"])
+							no=[np.nan for i in range(len(df),len(df)+k)]
+							confirm.extend(no)
+							index=[i for i in range(len(df)+k)]
+							log=[]
+							log.extend(y_logistic1)
+							log.extend(y_logistic2)
+							date=du
+							#date=list(df['Date'])[0:len(y_logistic1)]
+							cases=list(df["Cases by day"])
+							#cases.append(abs(list(df["Cumulative cases"])[-1]-log[len(list(df["Cumulative cases"]))]))
+							ll=list(np.diff(log[len(list(df["Cumulative cases"])):]))
+							cases.extend(ll)
+
+							fin=date[-1]
+							#st.markdown(fin)
+							for i in range(k):
+								k1=fin+timedelta(days=i+1)
+
+								date.append(k1)
+
+							log_df = pd.DataFrame(list(zip(index,date, confirm,log)),
+										columns =['index', "Date",'Confirmed',"Predicted"])
+							#st.write(log_df)
+							st.subheader("☞ Logistic Model ")
+							st.markdown("")
+
+							st.markdown("The models based on mathematical statistics, machine learning and deep learning have been applied to the prediction of time series of epidemic development. Logistic is often used in regression fitting of time series data due to its simple principle and efficient calculation. For example, in the Coronavirus case, Logistic growth is characterized by a slow increase in growth at the beginning, fast growth phase approaching the peak of the incidence curve, and a slow growth phase approaching the end of the outbreak (the maximum of infections).")
+							st.markdown("**Logistic Function :**")
+							image = Image.open("lf1.png")
+							st.image(image,
+							use_column_width=True)
+							st.markdown("**Modeling "+ select_reg+" COVID-19 Cumulative Confirmed Cases:**")
+							st.markdown("**An inflection point** is a point in a graph at which the concavity changes, it represents also an event that results in a significant change in the progress of a company, industry, sector, economy... and can be considered a turning point after which a dramatic change, with either positive or negative results, is expected to result.")
+							st.markdown("To model the evolution of confirmed cases we use 2 logistic funtions:")
+							#Logistic function: f(x) = a / (1 + e^(-b*(x-c)))
+							a1=str(round(logistic_model1[0],2))
+							b1=str(round(logistic_model1[1],2))
+							c1=str(round(logistic_model1[2],2))
+							st.markdown(" **+**  f1(x)="+a1+"/(1+e^(-"+b1+"*(x-"+c1+")))")
+
+							a2=str(round(logistic_model2[0],2))
+							b2=str(round(logistic_model2[1],2))
+							c2=str(round(logistic_model2[2],2))
+							st.markdown("  **+** f2(x)="+a2+"/(1+e^(-"+b2+"*(x-"+c2+")))")
+							correlation_matrix = np.corrcoef(log[0:len(df)],list(log_df["Confirmed"])[0:len(df)] )
+							correlation_xy = correlation_matrix[0,1]
+							r_squared = correlation_xy**2
+							r2="       **R²** = "+ str(round(r_squared*100,2))+"%"
+							st.markdown(r2)
+
+
+
+
+
+							fig = go.Figure()
+							fig_case=go.Figure()
+
+							fig2=go.Figure()
+							reference_line = go.Scatter(x=list(log_df["Date"]),
+														y= list(log_df["Confirmed"]),
+														mode="lines",
+														line=go.scatter.Line(color="blue"),
+														name="Confimed cases",
+														showlegend=True)
+							fig.add_trace(reference_line)
+							reference_line2 = go.Scatter(x=list(log_df["Date"])[0:len(df)],
+														y= list(log_df["Confirmed"])[0:len(df)],
+														mode="lines",
+														line=go.scatter.Line(color="blue"),
+														name="Confimed cases",
+														showlegend=True)
+							fig2.add_trace(reference_line2)
+
+
+							reference_line = go.Scatter(x=date,
+														y=log,
+														mode="lines",
+														line=go.scatter.Line(color="red"),
+														name="Predicted",
+														showlegend=True)
+							fig.add_trace(reference_line)
+
+							fig2.add_trace(go.Line(name="Logistic Function 1", x=date[0:len(y_logistic1)], y=y_logistic1))
+							fig_case.add_trace(go.Bar(name="New cases per Day", x=date, y=cases))
+							fig2.add_trace(go.Line(name="Logistic Function 2", x=date[len(y_logistic1):len(df)], y=y_logistic2[0:len(df)]))
+
+
+							a1=list(log_df["Date"])[np.argmax(dy)]
+							l1=[]
+							l1.append(a1)
+							a2=list(log_df["Confirmed"])[np.argmax(dy)]
+							l2=[]
+							l2.append(a2)
+
+							fig2.add_trace(go.Line(name="Inflection point", x=l1,y=l2))
+
+							fig.update_layout(
+							showlegend=True,
+
+
+									xaxis_title="Date",
+									plot_bgcolor='white'
+								)
+
+							fig2.update_layout(
+							showlegend=True,
+
+
+									xaxis_title="Date",
+									plot_bgcolor='white'
+								)
+
+							st.plotly_chart(fig2)
+
+
+							fig_case.update_layout(
+							showlegend=True,
+
+
+									xaxis_title="Date",
+									plot_bgcolor='white'
+								)
+
+
+							st.markdown("**Predict the end date of Covid-19 in "+select_reg+"**")
+							st.markdown("The graphical representaion below shows the end date of covid-19 and the total number of confirmed cases in  "+select_reg)
+
+							st.plotly_chart(fig)
+							st.markdown('**The end date: **'+date[-1].strftime("%Y-%m-%d"))
+							st.markdown('**The total number of confirmed cases : **'+str(int(log[-1])))
+							st.markdown("")
+							st.markdown("** 📊 The number of new cases per day **")
+							st.markdown("We can extract and predict the number of new cases per day using logistic model:")
+							st.plotly_chart(fig_case)
+
+						#except:
+							#print("Something went wrong")
+
+
 				if select0=="World Data":
 					st.markdown("""     """)
 					image = Image.open("world.jpg")
@@ -1116,7 +2102,7 @@ def main():
 							showlegend=True,
 
 							xaxis_title="Time (Date)",
-							yaxis_title="Nº of Closed cases",
+							yaxis_title="Nº of Closure cases",
 							plot_bgcolor='white'
 
 						)
@@ -1129,23 +2115,23 @@ def main():
 						st.markdown("")
 						st.subheader("Covid-19 testing:")
 						st.markdown("Testing for COVID-19 involves inserting a 6-inch long swab (like a long Q-tip) into the cavity between the nose and mouth (nasopharyngeal swab) for 15 seconds and rotating it several times. The swabbing is then repeated on the other side of the nose to make sure enough material is collected. The swab is then inserted into a container and sent to a lab for testing.")
-						image = Image.open("test.jpg")
+						image = Image.open("test.png")
 						st.image(image,
 							use_column_width=True)
 						st.markdown("Each country does a specific number of tests every day in order to find out how the virus is spreading and try to stop the transmission of the disease. ")
 						d1 = today.strftime("%Y-%m-%d")
 						test=pd.read_excel("owid-covid-data.xlsx")
-						d2=list(test['date'])[-1]
-						from datetime import datetime
+						#d2=list(The database of this web application is imported from['date'])[-1]
+						#from datetime import datetime
 
-						def days_between(d1, d2):
-							d1 = datetime.strptime(d1, "%Y-%m-%d")
-							d2 = datetime.strptime(d2, "%Y-%m-%d")
-							return abs((d2 - d1).days)
-						if d1!=list(test['date'])[-1] and days_between(d1, d2)>1 :
-							url="https://covid.ourworldindata.org/data/owid-covid-data.xlsx"
-							wget.download(url, 'owid-covid-data.xlsx')
-							test=pd.read_excel("owid-covid-data.xlsx")
+						#def days_between(d1, d2):
+							#d1 = datetime.strptime(d1, "%Y-%m-%d")
+							#d2 = datetime.strptime(d2, "%Y-%m-%d")
+							#return abs((d2 - d1).days)
+						#if d1!=list(test['date'])[-1] and days_between(d1, d2)>1 :
+							#url="https://covid.ourworldindata.org/data/owid-covid-data.xlsx"
+							#wget.download(url, 'owid-covid-data.xlsx')
+							#test=pd.read_excel("owid-covid-data.xlsx")
 
 						test1=test[test["location"]==select1]
 						st.markdown("**New tests per day :**")
@@ -1410,7 +2396,7 @@ def main():
 
 							st.markdown("The models based on mathematical statistics, machine learning and deep learning have been applied to the prediction of time series of epidemic development. Logistic is often used in regression fitting of time series data due to its simple principle and efficient calculation. For example, in the Coronavirus case, Logistic growth is characterized by a slow increase in growth at the beginning, fast growth phase approaching the peak of the incidence curve, and a slow growth phase approaching the end of the outbreak (the maximum of infections).")
 							st.markdown("**Logistic Function :**")
-							image = Image.open("lf1.jpg")
+							image = Image.open("lf1.png")
 							st.image(image,
 							use_column_width=True)
 							st.markdown("**Modeling "+ select1+" COVID-19 Cumulative Confirmed Cases:**")
@@ -1420,16 +2406,16 @@ def main():
 							a1=str(round(logistic_model1[0],2))
 							b1=str(round(logistic_model1[1],2))
 							c1=str(round(logistic_model1[2],2))
-							st.markdown(" **+**  f1(x)="+a1+"/(1+e^(-"+b1+"*(x- ("+c1+"))))")
+							st.markdown(" **+**  f1(x)="+a1+"/(1+e^(-"+b1+"*(x-"+c1+")))")
 
 							a2=str(round(logistic_model2[0],2))
 							b2=str(round(logistic_model2[1],2))
 							c2=str(round(logistic_model2[2],2))
-							st.markdown("  **+** f2(x)="+a2+"/(1+e^(-"+b2+"*(x- ("+c2+"))))")
+							st.markdown("  **+** f2(x)="+a2+"/(1+e^(-"+b2+"*(x-"+c2+")))")
 							correlation_matrix = np.corrcoef(log[0:len(df)],list(log_df["Confirmed"])[0:len(df)] )
 							correlation_xy = correlation_matrix[0,1]
 							r_squared = correlation_xy**2
-							r2="       **R-squared (R²)** = "+ str(round(r_squared*100,2))+"%"
+							r2="       **R²** = "+ str(round(r_squared*100,2))+"%"
 							st.markdown(r2)
 
 
@@ -1644,9 +2630,10 @@ def main():
 
 							plt.title("R0_Simpliste "+select1)
 							plt.legend(loc='best')
+							#path=os.path.abspath(os.getcwd())
 							plt.savefig('R0_Sim.jpg')
 							image = Image.open('R0_Sim.jpg')
-							st.image(image, caption='R0_Simplistic '+select1,
+							st.image(image, caption='R0_Simplist '+select1,
 							use_column_width=True)
 
 							#Downoad data
@@ -1881,6 +2868,7 @@ def main():
 							# Save graph to file.
 							plt.xlabel('Date')
 							plt.legend(loc='best')
+							#path=os.path.abspath(os.getcwd())
 							plt.savefig('R0_B&R.jpg')
 
 

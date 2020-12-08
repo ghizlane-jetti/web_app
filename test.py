@@ -3,6 +3,9 @@ import pandas as pd
 from pathlib import Path
 
 uploaded_file = st.file_uploader("Choose a XLSX file", type=["xlsx","csv"])
+from tempfile import NamedTemporaryFile
+
+st.set_option('deprecation.showfileUploaderEncoding', False)
 
 if uploaded_file:
     extension = Path(uploaded_file.name).suffix

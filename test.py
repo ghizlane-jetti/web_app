@@ -316,6 +316,7 @@ def main():
 				import io
 				from io import BytesIO
 				from io import StringIO
+				st.set_option('deprecation.showfileUploaderEncoding', False)
 				select0= st.sidebar.selectbox('Select :', ["Overview","World Data","By country","Country comparison covid-19", "Somalia Coronavirus"], key='2')
 				if select0=="Somalia Coronavirus":
 					st.markdown('Please select your file extension')
@@ -324,9 +325,9 @@ def main():
 					uploaded_file = st.file_uploader("Choose a XLSX or CSV file", type=["xlsx","csv"])
 					if uploaded_file:
 						if rad_types=='XLSX':
-							df = pd.read_excel(uploaded_file)
+							dso = pd.read_excel(uploaded_file)
 						else:
-							df = pd.read_csv(uploaded_file)
+							dso = pd.read_csv(uploaded_file)
 
 
 

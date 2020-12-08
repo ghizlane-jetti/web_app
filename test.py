@@ -324,17 +324,17 @@ def main():
 					
 					
 					from pathlib import Path
-                    ty=['XLSX','CSV']
-                    st.markdown('Please select your file extension')
-                    rad_types = st.radio(label="", options=ty)
-                    uploaded_file = st.file_uploader("Choose a XLSX or CSV file", type=["xlsx","csv"])
+                    			ty=['XLSX','CSV']
+                    			st.markdown('Please select your file extension')
+                    			rad_types = st.radio(label="", options=ty)
+                    			uploaded_file = st.file_uploader("Choose a XLSX or CSV file", type=["xlsx","csv"])
 
 
 					if uploaded_file:
-						    if rad_types=='XLSX':
-                                df = pd.read_excel(uploaded_file)
-                            else:
-                                df = pd.read_csv(uploaded_file)
+						if rad_types=='XLSX':
+							df = pd.read_excel(uploaded_file)
+                            			else:
+							df = pd.read_csv(uploaded_file)
 
 
 

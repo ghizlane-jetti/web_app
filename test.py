@@ -196,7 +196,7 @@ def main():
 					d1 = datetime.strptime(d1, "%d/%m/%Y")
 					d2 = datetime.strptime(d2, "%d/%m/%Y")
 					return abs((d2 - d1).days)
-				if d1!=list(dg['Date'])[-1] and days_between(d1, d2)>2 :
+				if d1!=list(dg['Date'])[-1] and days_between(d1, d2)>1 :
 					url = 'https://data.humdata.org/hxlproxy/api/data-preview.csv?url=https%3A%2F%2Fraw.githubusercontent.com%2FCSSEGISandData%2FCOVID-19%2Fmaster%2Fcsse_covid_19_data%2Fcsse_covid_19_time_series%2Ftime_series_covid19_confirmed_global.csv&filename=time_series_covid19_confirmed_global.csv'
 					url1 = 'https://data.humdata.org/hxlproxy/api/data-preview.csv?url=https%3A%2F%2Fraw.githubusercontent.com%2FCSSEGISandData%2FCOVID-19%2Fmaster%2Fcsse_covid_19_data%2Fcsse_covid_19_time_series%2Ftime_series_covid19_deaths_global.csv&filename=time_series_covid19_deaths_global.csv'
 					url2 = 'https://data.humdata.org/hxlproxy/api/data-preview.csv?url=https%3A%2F%2Fraw.githubusercontent.com%2FCSSEGISandData%2FCOVID-19%2Fmaster%2Fcsse_covid_19_data%2Fcsse_covid_19_time_series%2Ftime_series_covid19_recovered_global.csv&filename=time_series_covid19_recovered_global.csv'
@@ -313,13 +313,15 @@ def main():
 				#Country/Region
 				c=list((data_cov["Country/Region"]))
 				c=list(np.unique(c))
-
+				import io
 				select0= st.sidebar.selectbox('Select :', ["Overview","World Data","By country","Country comparison covid-19", "Somalia Coronavirus"], key='2')
 				if select0=="Somalia Coronavirus":
 
 
 					#dso=data_cov[data_cov["Country/Region"]=="Somalia"]
+					st.set_option('deprecation.showfileUploaderEncoding', False)
 					uploaded_file = st.file_uploader("Choose a XLSX file", type="xlsx")
+					
 
 					if uploaded_file:
 						dso = pd.read_excel(uploaded_file)

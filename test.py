@@ -320,11 +320,17 @@ def main():
 
 					#dso=data_cov[data_cov["Country/Region"]=="Somalia"]
 					st.set_option('deprecation.showfileUploaderEncoding', False)
-					uploaded_file = st.file_uploader("Choose a XLSX file", type="xlsx")
+					uploaded_file = st.file_uploader("Choose a XLSX or CSV file", type=["xlsx","csv"])
+					from pathlib import Path
 					
 
 					if uploaded_file:
-						dso = pd.read_excel(uploaded_file)
+						extension = Path(uploaded_file.name).suffix
+						if extension.upper()==".XLSX":
+							dso = pd.read_excel(uploaded_file)
+						else:
+							dso = pd.read_csv(uploaded_file)
+							
 
 
 

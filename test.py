@@ -318,14 +318,8 @@ def main():
 				from io import StringIO
 				select0= st.sidebar.selectbox('Select :', ["Overview","World Data","By country","Country comparison covid-19", "Somalia Coronavirus"], key='2')
 				if select0=="Somalia Coronavirus":
-
-
-					#dso=data_cov[data_cov["Country/Region"]=="Somalia"]
-					
-					
-					from pathlib import Path
-                    			ty=['XLSX','CSV']
-                    			st.markdown('Please select your file extension')
+					st.markdown('Please select your file extension')
+					ty=['XLSX','CSV']
                     			rad_types = st.radio(label="", options=ty)
                     			uploaded_file = st.file_uploader("Choose a XLSX or CSV file", type=["xlsx","csv"])
 

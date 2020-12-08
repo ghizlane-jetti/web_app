@@ -325,7 +325,7 @@ def main():
 					if uploaded_file:
 						if rad_types=='XLSX':
 							df = pd.read_excel(uploaded_file)
-                            			else:
+						else:
 							df = pd.read_csv(uploaded_file)
 
 

@@ -2876,7 +2876,7 @@ def main():
 							plt.xlabel('Date')
 							plt.legend(loc='best')
 							#path=os.path.abspath(os.getcwd())
-							plt.savefig'R0_B&R.jpg')
+							plt.savefig('R0_B&R.jpg')
 
 
 							image = Image.open('R0_B&R.jpg')

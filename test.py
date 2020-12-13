@@ -196,7 +196,7 @@ def main():
 					d1 = datetime.strptime(d1, "%d/%m/%Y")
 					d2 = datetime.strptime(d2, "%d/%m/%Y")
 					return abs((d2 - d1).days)
-				if d1!=list(dg['Date'])[-1] and days_between(d1, d2)>1 :
+				if d1!=list(dg['Date'])[-1] and days_between(d1, d2)>2 :
 					url = 'https://data.humdata.org/hxlproxy/api/data-preview.csv?url=https%3A%2F%2Fraw.githubusercontent.com%2FCSSEGISandData%2FCOVID-19%2Fmaster%2Fcsse_covid_19_data%2Fcsse_covid_19_time_series%2Ftime_series_covid19_confirmed_global.csv&filename=time_series_covid19_confirmed_global.csv'
 					url1 = 'https://data.humdata.org/hxlproxy/api/data-preview.csv?url=https%3A%2F%2Fraw.githubusercontent.com%2FCSSEGISandData%2FCOVID-19%2Fmaster%2Fcsse_covid_19_data%2Fcsse_covid_19_time_series%2Ftime_series_covid19_deaths_global.csv&filename=time_series_covid19_deaths_global.csv'
 					url2 = 'https://data.humdata.org/hxlproxy/api/data-preview.csv?url=https%3A%2F%2Fraw.githubusercontent.com%2FCSSEGISandData%2FCOVID-19%2Fmaster%2Fcsse_covid_19_data%2Fcsse_covid_19_time_series%2Ftime_series_covid19_recovered_global.csv&filename=time_series_covid19_recovered_global.csv'
@@ -313,23 +313,33 @@ def main():
 				#Country/Region
 				c=list((data_cov["Country/Region"]))
 				c=list(np.unique(c))
-				import io
-				from io import BytesIO
-				from io import StringIO
-				st.set_option('deprecation.showfileUploaderEncoding', False)
+
 				select0= st.sidebar.selectbox('Select :', ["Overview","World Data","By country","Country comparison covid-19", "Somalia Coronavirus"], key='2')
 				if select0=="Somalia Coronavirus":
+					#dso=data_cov[data_cov["Country/Region"]=="Somalia"]
 					st.markdown('Please select your file extension')
 					ty=['XLSX','CSV']
 					rad_types = st.radio(label="", options=ty)
+					st.set_option('deprecation.showfileUploaderEncoding', False)
 					uploaded_file = st.file_uploader("Choose a XLSX or CSV file", type=["xlsx","csv"])
+					from pathlib import Path
+
+
 					if uploaded_file:
-						if rad_types=='XLSX':
+						extension = Path(uploaded_file.name).suffix
+						if extension.upper()==".XLSX":
 							dso = pd.read_excel(uploaded_file)
 						else:
 							dso = pd.read_csv(uploaded_file)
 
 
+
+
+					#dso=data_cov[data_cov["Country/Region"]=="Somalia"]
+					#uploaded_file = st.file_uploader("Choose a XLSX file", type="xlsx")
+
+					#if uploaded_file:
+						#dso = pd.read_excel(uploaded_file)
 
 
 
@@ -354,9 +364,10 @@ def main():
 						all_day=[]
 						reg_cumul=list(dso["Cumulative cases"])
 						reg_day=list(dso["Cases by day"])
+						cn=list(dso['Country'])[0]
 
 						state=["All" for i in du]
-						som=["SOMALIA" for i in du]
+						som=[ cn for i in du]
 						index=[]
 						for i in du:
 							index=[j for j,val in enumerate(d) if val==i]
@@ -716,7 +727,7 @@ def main():
 								image = Image.open("r0.png")
 								st.image(image,
 								use_column_width=True)
-								st.markdown("***Period:***")
+								st.markdown("***R0:***")
 
 								df=data_reg
 
@@ -731,7 +742,7 @@ def main():
 								R_T_MAX = 12
 								r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
 
-								def prepare_cases(cases, cutoff=5):
+								def prepare_cases(cases, cutoff=2):
 									new_cases = cases
 
 									smoothed = new_cases.rolling(7,
@@ -747,7 +758,11 @@ def main():
 									return original, smoothed
 								cases = df.xs(country_name).rename(f"{country_name} cases")
 
-								original, smoothed = prepare_cases(cases)
+								original, smoothed = prepare_cases(cases,5)
+								l=[i for i in range(len(smoothed)) if smoothed[i]==0]
+								for i in l:
+									smoothed[i]=1
+
 								GAMMA = 1/7
 								def get_posteriors(sr, sigma=0.15):
 
@@ -842,7 +857,36 @@ def main():
 								most_likely = posteriors.idxmax().rename('ML')
 
 								# Look into why you shift -1
+								#result0 = pd.concat([most_likely, hdis], axis=1)
+								#original, smoothed = prepare_cases(cases,10)
+								#posteriors, log_likelihood = get_posteriors(smoothed, sigma=.25)
+								#posteriors=posteriors.dropna(axis=1, how='all')
+								#hdi = highest_density_interval(posteriors, debug=True)
+								# Note that this takes a while to execute - it's not the most efficient algorithm
+								#hdis = highest_density_interval(posteriors, p=.9)
+
+								#most_likely = posteriors.idxmax().rename('ML')
 								result = pd.concat([most_likely, hdis], axis=1)
+								#if result1.index[-1]==result0.index[-1]:
+									#result=result0
+								#else:
+									#jours=(result1.index[0]-result0.index[-1]).days
+									#st.markdown(jours)
+									#if  jours==0:
+										#result=result0
+									#else:
+										#res=result0
+										#ld=list(result0.index)
+										#lr=list(result0['ML'])
+										#for i in range((result1.index[0]-result0.index[-1]).days):
+											#ld.append(result0.index[-1]+timedelta(days=i+1))
+											#lr.append(np.nan)
+
+										#df= pd.DataFrame(list(zip(ld, lr)),
+													#columns =['Date', 'ML'])
+										#re = pd.DataFrame(df, columns=['Date',"ML"]).set_index('Date')
+										#result=re.append(result1)
+
 
 
 								index = pd.to_datetime(result['ML'].index.get_level_values('Date'))
@@ -852,14 +896,9 @@ def main():
 								R0.index=R0.Date
 								r0=R0.copy()
 
-								from_date  = st.selectbox('From :', list(result.index) )
-								ind1=list(result.index).index(from_date)
-								l2=list(result.index)[ind1+1:]
-								to_date= st.selectbox('To :',l2  )
-								ind2=list(result.index).index(to_date)
-								coun=[select_reg for i in range(ind1,ind2+1)]
-								R0_BR=list(values)[ind1:ind2+1]
-								dt=list(result.index)[ind1:ind2+1]
+								coun=[select_reg for i in range(len(list(values)))]
+								R0_BR=list(values)
+								dt=list(result.index)
 								data_per=pd.DataFrame(list(zip(dt,R0_BR,coun)),
 									columns =['Date',"R0","STATE"])
 								fig = go.Figure()
@@ -929,6 +968,7 @@ def main():
 								st.markdown(get_binary_file_downloader_html("Data_Bettencourt_&_Ribeiro_"+select_reg+".xlsx", 'R0_Bettencourt& Rebeiro Data'), unsafe_allow_html=True)
 
 							except:
+
 								st.markdown("Sorry, something went wrong you can visualize R0 using Simplistic Method. ")
 							#st.write(type(list(data_per['Date'])[0]))
 						if radio == "New cases per day":
@@ -1202,7 +1242,7 @@ def main():
 
 								st.markdown("The models based on mathematical statistics, machine learning and deep learning have been applied to the prediction of time series of epidemic development. Logistic is often used in regression fitting of time series data due to its simple principle and efficient calculation. For example, in the Coronavirus case, Logistic growth is characterized by a slow increase in growth at the beginning, fast growth phase approaching the peak of the incidence curve, and a slow growth phase approaching the end of the outbreak (the maximum of infections).")
 								st.markdown("**Logistic Function :**")
-								image = Image.open("lf1.jpg")
+								image = Image.open("lf1.png")
 								st.image(image,
 								use_column_width=True)
 								st.markdown("**Modeling "+ select_reg+" COVID-19 Cumulative Confirmed Cases:**")
@@ -1627,7 +1667,7 @@ def main():
 									R_T_MAX = 12
 									r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
 
-									def prepare_cases(cases, cutoff=10):
+									def prepare_cases(cases, cutoff=2):
 										new_cases = cases
 
 										smoothed = new_cases.rolling(7,
@@ -1644,6 +1684,9 @@ def main():
 									cases = dff.xs(country_name).rename(f"{country_name} cases")
 
 									original, smoothed = prepare_cases(cases)
+									l=[i for i in range(len(smoothed)) if smoothed[i]==0]
+									for i in l:
+										smoothed[i]=1
 									GAMMA = 1/7
 									def get_posteriors(sr, sigma=0.15):
 
@@ -1757,21 +1800,21 @@ def main():
 							n=(ind2-ind1).days
 							dat=[ind1+timedelta(days=i) for i in range(n+1)]
 
-							from_date  = st.selectbox('From :', dat )
-							l2=dat[1:]
-							to_date= st.selectbox('To :',l2  )
-							ind1=[index for index, value in enumerate(list(df_row['Date'])) if value == from_date][0]
-							ind2=[index for index, value in enumerate(list(df_row['Date'])) if value == to_date][-1]
-							R0_BR=list(df_row['R0'])[ind1:ind2+1]
-							dt=list(df_row['Date'])[ind1:ind2+1]
-							coun=list(df_row['Country/Region'])[ind1:ind2+1]
+							#from_date  = st.selectbox('From :', dat )
+							#l2=dat[1:]
+							#to_date= st.selectbox('To :',l2  )
+							#ind1=[index for index, value in enumerate(list(df_row['Date'])) if value == from_date][0]
+							#ind2=[index for index, value in enumerate(list(df_row['Date'])) if value == to_date][-1]
+							R0_BR=list(df_row['R0'])
+							dt=list(df_row['Date'])
+							coun=list(df_row['Country/Region'])
 							data_per=pd.DataFrame(list(zip(dt,R0_BR,coun)),
 								columns =['Date',"R0","Country/Region"])
 
-							i1=from_date
-							i2=to_date
-							n=(i2-i1).days
-							X=[i1+timedelta(days=i) for i in range(n+1)]
+							#i1=from_date
+							#i2=to_date
+							#n=(i2-i1).days
+							X=dat
 							fig = px.line(data_per,x="Date", y="R0",color="Country/Region")
 
 							fig.update_layout(
@@ -2410,7 +2453,7 @@ def main():
 
 							st.markdown("The models based on mathematical statistics, machine learning and deep learning have been applied to the prediction of time series of epidemic development. Logistic is often used in regression fitting of time series data due to its simple principle and efficient calculation. For example, in the Coronavirus case, Logistic growth is characterized by a slow increase in growth at the beginning, fast growth phase approaching the peak of the incidence curve, and a slow growth phase approaching the end of the outbreak (the maximum of infections).")
 							st.markdown("**Logistic Function :**")
-							image = Image.open("lf1.jpg")
+							image = Image.open("lf1.png")
 							st.image(image,
 							use_column_width=True)
 							st.markdown("**Modeling "+ select1+" COVID-19 Cumulative Confirmed Cases:**")
@@ -2678,7 +2721,7 @@ def main():
 							image = Image.open("r0.png")
 							st.image(image,
 							use_column_width=True)
-							st.markdown("***Period:***")
+							st.markdown("***R0:***")
 							df = pd.read_excel("Covid.xlsx")
 							df=df[df["Country/Region"]==select1]
 							#Convert Date column to date type:
@@ -2699,7 +2742,7 @@ def main():
 							R_T_MAX = 12
 							r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
 
-							def prepare_cases(cases, cutoff=10):
+							def prepare_cases(cases, cutoff=2):
 								new_cases = cases
 
 								smoothed = new_cases.rolling(7,
@@ -2717,6 +2760,10 @@ def main():
 
 							original, smoothed = prepare_cases(cases)
 							GAMMA = 1/7
+
+							l=[i for i in range(len(smoothed)) if smoothed[i]==0]
+							for i in l:
+								smoothed[i]=1
 							def get_posteriors(sr, sigma=0.15):
 
 								# (1) Calculate Lambda
@@ -2820,14 +2867,15 @@ def main():
 							R0.index=R0.Date
 							r0=R0.copy()
 
-							from_date  = st.selectbox('From :', list(result.index) )
-							ind1=list(result.index).index(from_date)
-							l2=list(result.index)[ind1+1:]
-							to_date= st.selectbox('To :',l2  )
-							ind2=list(result.index).index(to_date)
-							coun=[select1 for i in range(ind1,ind2+1)]
-							R0_BR=list(values)[ind1:ind2+1]
-							dt=list(result.index)[ind1:ind2+1]
+							#from_date  = st.selectbox('From :', list(result.index) )
+							#ind1=list(result.index).index(from_date)
+							#l2=list(result.index)[ind1+1:]
+							#to_date= st.selectbox('To :',l2  )
+							#ind2=list(result.index).index(to_date)
+
+							R0_BR=list(values)
+							dt=list(result.index)
+							coun=[select1 for i in range(len(dt))]
 							data_per=pd.DataFrame(list(zip(dt,R0_BR,coun)),
 								columns =['Date',"R0","Country/Region"])
 							fig = go.Figure()

@@ -326,7 +326,7 @@ def main():
 
 
 					if uploaded_file:
-						extension = Path(uploaded_file.name).suffix
+						#extension = Path(uploaded_file.name).suffix
 						if extension.upper()=="XLSX":
 							dso = pd.read_excel(uploaded_file)
 						else:

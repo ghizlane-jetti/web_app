@@ -326,8 +326,8 @@ def main():
 
 
 					if uploaded_file:
-						#extension = Path(uploaded_file.name).suffix
-						if rad_types=="XLSX":
+						extension = Path(uploaded_file.name).suffix
+						if extension.upper()=="XLSX":
 							dso = pd.read_excel(uploaded_file)
 						else:
 							dso = pd.read_csv(uploaded_file)
@@ -758,10 +758,8 @@ def main():
 									return original, smoothed
 								cases = df.xs(country_name).rename(f"{country_name} cases")
 
-								original, smoothed = prepare_cases(cases,5)
-								l=[i for i in range(len(smoothed)) if smoothed[i]==0]
-								for i in l:
-									smoothed[i]=1
+								original, smoothed = prepare_cases(cases)
+
 
 								GAMMA = 1/7
 								def get_posteriors(sr, sigma=0.15):
@@ -816,10 +814,12 @@ def main():
 
 									# Execute full Bayes' Rule
 											posteriors[current_day] = numerator/denominator
-
+											k=posteriors[current_day]
 									# Add to the running sum of log likelihoods
 
 											log_likelihood += np.log(denominator)
+										else:
+											posteriors[current_day]=k
 
 									return posteriors, log_likelihood
 
@@ -891,18 +891,20 @@ def main():
 
 								index = pd.to_datetime(result['ML'].index.get_level_values('Date'))
 								values = result['ML'].values
-								R0 = pd.DataFrame(list(zip(list(index), list(values))),
-											columns =['Date', 'R0'])
+								low=result['Low_90'].values
+								high=result['High_90'].values
+								R0 = pd.DataFrame(list(zip(list(index), list(values),list(low),list(high))),
+											columns =['Date', 'R0','Low_90','High_90'])
 								R0.index=R0.Date
 								r0=R0.copy()
 
 								coun=[select_reg for i in range(len(list(values)))]
 								R0_BR=list(values)
 								dt=list(result.index)
-								data_per=pd.DataFrame(list(zip(dt,R0_BR,coun)),
-									columns =['Date',"R0","STATE"])
+								data_per=pd.DataFrame(list(zip(dt,coun,R0_BR,list(low),list(high))),
+									columns =['Date',"STATE","R0",'Low_90','High_90'])
 								fig = go.Figure()
-								fig.add_trace(go.Line(name="R0 - Bettencourt & Rebeiro ", x=list(data_per['Date']), y=list(data_per['R0'])))
+								#fig.add_trace(go.Line(name="R0 - Bettencourt & Rebeiro ", x=list(data_per['Date']), y=list(data_per['R0'])))
 								fig.update_layout(
 								showlegend=True,
 
@@ -914,9 +916,17 @@ def main():
 								reference_line = go.Scatter(x=list(data_per['Date']),
 															y=[1 for i in range(len(list(data_per["Date"])))],
 															mode="lines",
-															line=go.scatter.Line(color="red"),
+															line=go.scatter.Line(color="black"),
 
 															showlegend=False)
+								fig.add_trace(reference_line)
+								reference_line = go.Scatter(x=list(data_per['Date']),
+															y=R0_BR,
+															mode="markers+lines",
+															marker={'color':"DarkRed"},
+															line=go.scatter.Line(color="FireBrick"),
+															name="Predicted",
+															showlegend=True)
 								fig.add_trace(reference_line)
 								st.plotly_chart(fig)
 								R0.index=R0.Date
@@ -1684,9 +1694,7 @@ def main():
 									cases = dff.xs(country_name).rename(f"{country_name} cases")
 
 									original, smoothed = prepare_cases(cases)
-									l=[i for i in range(len(smoothed)) if smoothed[i]==0]
-									for i in l:
-										smoothed[i]=1
+
 									GAMMA = 1/7
 									def get_posteriors(sr, sigma=0.15):
 
@@ -1740,10 +1748,13 @@ def main():
 
 										# Execute full Bayes' Rule
 												posteriors[current_day] = numerator/denominator
+												k=numerator/denominator
 
 										# Add to the running sum of log likelihoods
 
 												log_likelihood += np.log(denominator)
+											else:
+												posteriors[current_day]=k
 
 										return posteriors, log_likelihood
 
@@ -1785,11 +1796,21 @@ def main():
 
 
 									index = pd.to_datetime(result['ML'].index.get_level_values('Date'))
+
 									values = result['ML'].values
-									coun=[count for i in range(len(values))]
-									R0 = pd.DataFrame(list(zip(list(index), list(values),coun)),
-												columns =['Date', 'R0',"Country/Region"])
+									low=result['Low_90'].values
+									high=result['High_90'].values
+
+
+
+									coun=[count for i in range(len(list(values)))]
+
+
+									R0 = pd.DataFrame(list(zip(list(index),coun, list(values))),
+												columns =['Date',"Country/Region", 'R0',])
 									ld.append(R0)
+
+
 							except:
 								st.markdown("**Note** : Sorry, something went wrong, you can use simplistic method to visualize R0 evolution of  "+count)
 							df_row = pd.concat(ld)
@@ -1808,14 +1829,16 @@ def main():
 							R0_BR=list(df_row['R0'])
 							dt=list(df_row['Date'])
 							coun=list(df_row['Country/Region'])
-							data_per=pd.DataFrame(list(zip(dt,R0_BR,coun)),
-								columns =['Date',"R0","Country/Region"])
+							data_per=pd.DataFrame(list(zip(list(index),coun,R0_BR,list(low),list(high))),
+								columns =['Date',"Country/Region","R0",'Low_90','High_90'])
 
 							#i1=from_date
 							#i2=to_date
 							#n=(i2-i1).days
 							X=dat
 							fig = px.line(data_per,x="Date", y="R0",color="Country/Region")
+
+
 
 							fig.update_layout(
 								plot_bgcolor='white',
@@ -2761,9 +2784,7 @@ def main():
 							original, smoothed = prepare_cases(cases)
 							GAMMA = 1/7
 
-							l=[i for i in range(len(smoothed)) if smoothed[i]==0]
-							for i in l:
-								smoothed[i]=1
+
 							def get_posteriors(sr, sigma=0.15):
 
 								# (1) Calculate Lambda
@@ -2816,10 +2837,13 @@ def main():
 
 								# Execute full Bayes' Rule
 										posteriors[current_day] = numerator/denominator
+										k=posteriors[current_day]
 
 								# Add to the running sum of log likelihoods
 
 										log_likelihood += np.log(denominator)
+									else:
+										posteriors[current_day]=k
 
 								return posteriors, log_likelihood
 
@@ -2862,8 +2886,17 @@ def main():
 
 							index = pd.to_datetime(result['ML'].index.get_level_values('Date'))
 							values = result['ML'].values
-							R0 = pd.DataFrame(list(zip(list(index), list(values))),
-										columns =['Date', 'R0'])
+							values = result['ML'].values
+							low=result['Low_90'].values
+							high=result['High_90'].values
+
+
+							coun=[select1 for i in range(len(list(values)))]
+							R0_BR=list(values)
+							dt=list(result.index)
+							R0=pd.DataFrame(list(zip(dt,coun,R0_BR,list(low),list(high))),
+								columns =['Date',"STATE","R0",'Low_90','High_90'])
+
 							R0.index=R0.Date
 							r0=R0.copy()
 
@@ -2876,10 +2909,10 @@ def main():
 							R0_BR=list(values)
 							dt=list(result.index)
 							coun=[select1 for i in range(len(dt))]
-							data_per=pd.DataFrame(list(zip(dt,R0_BR,coun)),
-								columns =['Date',"R0","Country/Region"])
+							data_per=pd.DataFrame(list(zip(dt,coun,R0_BR,list(low),list(high))),
+								columns =['Date',"Country/Region","R0",'Low_90','High_90'])
 							fig = go.Figure()
-							fig.add_trace(go.Line(name="R0 - Bettencourt & Rebeiro ", x=list(data_per['Date']), y=list(data_per['R0'])))
+
 							fig.update_layout(
 							showlegend=True,
 
@@ -2889,9 +2922,17 @@ def main():
 									plot_bgcolor='white'
 								)
 							reference_line = go.Scatter(x=list(data_per['Date']),
+														y=R0_BR,
+														mode="markers+lines",
+														marker={'color':"DarkRed"},
+														line=go.scatter.Line(color="FireBrick"),
+														name="R0 - Bettencourt & Rebeiro",
+														showlegend=True)
+							fig.add_trace(reference_line)
+							reference_line = go.Scatter(x=list(data_per['Date']),
 														y=[1 for i in range(len(list(data_per["Date"])))],
 														mode="lines",
-														line=go.scatter.Line(color="red"),
+														line=go.scatter.Line(color="black"),
 
 														showlegend=False)
 							fig.add_trace(reference_line)

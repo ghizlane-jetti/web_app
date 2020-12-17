@@ -196,7 +196,7 @@ def main():
 					d1 = datetime.strptime(d1, "%d/%m/%Y")
 					d2 = datetime.strptime(d2, "%d/%m/%Y")
 					return abs((d2 - d1).days)
-				if d1!=list(dg['Date'])[-1] and days_between(d1, d2)>2 :
+				if d1!=list(dg['Date'])[-1] and days_between(d1, d2)>1 :
 					url = 'https://data.humdata.org/hxlproxy/api/data-preview.csv?url=https%3A%2F%2Fraw.githubusercontent.com%2FCSSEGISandData%2FCOVID-19%2Fmaster%2Fcsse_covid_19_data%2Fcsse_covid_19_time_series%2Ftime_series_covid19_confirmed_global.csv&filename=time_series_covid19_confirmed_global.csv'
 					url1 = 'https://data.humdata.org/hxlproxy/api/data-preview.csv?url=https%3A%2F%2Fraw.githubusercontent.com%2FCSSEGISandData%2FCOVID-19%2Fmaster%2Fcsse_covid_19_data%2Fcsse_covid_19_time_series%2Ftime_series_covid19_deaths_global.csv&filename=time_series_covid19_deaths_global.csv'
 					url2 = 'https://data.humdata.org/hxlproxy/api/data-preview.csv?url=https%3A%2F%2Fraw.githubusercontent.com%2FCSSEGISandData%2FCOVID-19%2Fmaster%2Fcsse_covid_19_data%2Fcsse_covid_19_time_series%2Ftime_series_covid19_recovered_global.csv&filename=time_series_covid19_recovered_global.csv'
@@ -326,10 +326,12 @@ def main():
 
 
 					if uploaded_file:
-						#extension = Path(uploaded_file.name).suffix
-						if rad_types=="XLSX":
+
+						if rad_types=='XLSX':
 							dso = pd.read_excel(uploaded_file)
 						else:
+							df.to_csv('a.csv',index=False)
+							df=pd.read_csv("a.csv",sep=';')
 							dso = pd.read_csv(uploaded_file)
 
 
@@ -571,144 +573,7 @@ def main():
 									st.markdown(get_binary_file_downloader_html("IRR.xlsx", 'IRR Data'), unsafe_allow_html=True)
 							except:
 								print("Something went wrong")
-						elif radio=="R0 (simplistic Method)":
 
-
-							try:
-								st.subheader("📈 Evolution of R0 using Simplist Method in "+select_reg)
-								st.markdown("")
-
-								st.markdown("""R0, pronounced “R naught,” is a mathematical term that indicates how contagious an infectious disease is. It’s also referred to as the reproduction number. As an infection is transmitted to new people, it reproduces itself.""")
-
-								st.markdown("""R0 tells you the average number of people who will contract a contagious disease from one person with that disease. It specifically applies to a population of people who were previously free of infection and haven’t been vaccinated.""")
-
-								st.markdown("""For example, if a disease has an R0 of 18, a person who has the disease will transmit it to an average of 18 other people. That replication will continue if no one has been vaccinated against the disease or is already immune to it in their community.""")
-								image = Image.open("r0.png")
-								st.image(image,
-								use_column_width=True)
-								st.markdown("***Period:***")
-								data = pd.DataFrame(df, columns=['Date','Difference']).set_index('Date')
-
-								data['smooth_mean(gauss, win=7)'] = data.iloc[:,0].rolling(7,
-									win_type='gaussian',
-									min_periods=1,
-									center=True).mean(std=2).round()
-								ds=list(data['smooth_mean(gauss, win=7)'])
-								for i in range(len(ds)):
-									if ds[i]==0:
-										ds[i]=np.nan
-								data['smooth_mean(gauss, win=7)']=ds
-								gauss=list(data['smooth_mean(gauss, win=7)'])[9:]
-								l_7=[]
-								for i in range(len(gauss)-6):
-									if  m.isnan(gauss[i])==True or m.isnan(gauss[i+6])==True:
-										l_7.append(np.nan)
-									else:
-										l_7.append(round(gauss[i+6])/round(gauss[i]))
-
-								gauss=list(data['smooth_mean(gauss, win=7)'])[9:]
-								l_4=[]
-								for i in range(len(gauss)-3):
-									if  m.isnan(gauss[i])==True or m.isnan(gauss[i+3])==True :
-										l_4.append(np.nan)
-									else:
-										l_4.append(round(gauss[i+3])/round(gauss[i]))
-								N=len(data)
-								n_4=len(l_4)
-								n_7=len(l_7)
-
-								gauss_4=[]
-								gauss_7=[]
-								for i in range(N-n_4):
-									gauss_4.append(np.nan)
-								gauss_4.extend(l_4)
-
-								for i in range(N-n_7):
-									gauss_7.append(np.nan)
-								gauss_7.extend(l_7)
-								data["Gaussian_R0_4_Days"]=gauss_4
-								data["Gaussian_R0_7_Days"]=gauss_7
-								col = data.loc[: , "Gaussian_R0_4_Days":"Gaussian_R0_7_Days"]
-								data['R0_Simpliste'] = col.mean(axis=1)
-								R0_sim=list(data['R0_Simpliste'])
-								data['Date']=data.index
-								from_date  = st.selectbox('From :', list(data.Date) )
-								ind1=list(data.Date).index(from_date)
-								l2=list(data.Date)[int(ind1)+1:]
-								to_date= st.selectbox('To :',l2  )
-								ind2=list(data.Date).index(to_date)
-								R0_sim=R0_sim[ind1:ind2+1]
-								dt=list(data.Date)[ind1:ind2+1]
-								data_per=pd.DataFrame(list(zip(dt,R0_sim)),
-									columns =['Date',"R0_Simpliste"])
-								fig = go.Figure()
-								fig.add_trace(go.Line(name="R0 - Simplistic Method", x=list(data_per['Date']), y=list(data_per['R0_Simpliste'])))
-								fig.update_layout(
-								showlegend=True,
-
-								plot_bgcolor='white',
-								xaxis_title="Date",
-								yaxis_title="R0 Simplistic"
-							)
-								reference_line = go.Scatter(x=list(data_per['Date']),
-													y=[1 for i in range(len(dt))],
-													mode="lines",
-													line=go.scatter.Line(color="red"),
-
-													showlegend=False)
-								fig.add_trace(reference_line)
-								st.plotly_chart(fig)
-
-								from scipy.signal import argrelextrema
-								data=data_per
-								data['Country']=[select_reg for i in range(len(data))]
-								da=[data['Date'][i].strftime("%d-%m-%Y") for i in range(len(data))]
-								data['Date']=da
-								data.plot(x="Date",y="R0_Simpliste",label="R0", figsize=(14,5), color="m")
-
-
-								peak_indexes = argrelextrema(np.array(list(data['R0_Simpliste'])), np.greater)
-								peak_indexes = peak_indexes[0]
-								plt.axhline(y=1,linestyle='--', color='black')
-
-								# Plot peaks.
-								peak_x = peak_indexes
-								peak_y = np.array(list(data['R0_Simpliste']))[peak_indexes]
-
-								# Find valleys(min).
-								valley_indexes = argrelextrema(np.array(list(data['R0_Simpliste'])), np.less)
-								valley_indexes = valley_indexes[0]
-
-
-								# Plot valleys.
-								valley_x = valley_indexes
-								valley_y =  np.array(list(data['R0_Simpliste']))[valley_indexes]
-
-								reg_x=np.union1d(valley_indexes,peak_indexes)
-								reg_y=np.array(list(data['R0_Simpliste']))[reg_x]
-								plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="linear regression")
-								# Save graph to file.
-								plt.xlabel('Date')
-								plt.legend(loc='best')
-
-								plt.title("R0_Simpliste "+select_reg)
-								plt.legend(loc='best')
-								#path=os.path.abspath(os.getcwd())
-								plt.savefig('R0_Sim.jpg')
-								image = Image.open('R0_Sim.jpg')
-								st.image(image, caption='R0_Simplist '+select_reg,
-								use_column_width=True)
-
-								#Downoad data
-								st.markdown("""""")
-								st.markdown("""**Note: ** World knows both a decrease in the number of new reported cases and an increase in it. In fact, some countries sometimes report zero coronavirus cases for a period of time as China, Somalia... This variance can influence the calculation of R0. That's why you can observe some missing values.    """)
-
-								data_per.to_excel("R0_sim.xlsx")
-
-
-								st.markdown(get_binary_file_downloader_html('R0_sim.xlsx', 'R0_simp Data'), unsafe_allow_html=True)
-							except:
-								print("Something went wrong")
 
 						elif radio=="R0 (Bettencourt and Rebeiro Method)":
 
@@ -727,24 +592,24 @@ def main():
 								image = Image.open("r0.png")
 								st.image(image,
 								use_column_width=True)
-								st.markdown("***R0:***")
+								Proba=0.95
+								st.markdown("")
+								tt='Rt daily with serial interval of 4 and 7 days, credible interval ='+str(Proba*100)[:-2]+'%'
+
 
 								df=data_reg
 
 								df.to_excel("Data_covid.xlsx")
 								url = 'Data_covid.xlsx'
 								df = pd.read_excel(url,
-													usecols=['Date', 'STATE', 'Cases by day'],
+													usecols=['Date', 'STATE', 'Cumulative cases'],
 													index_col=[1,0],
 													squeeze=True).sort_index()
-								country_name = select_reg
-								# We create an array for every possible value of Rt
-								R_T_MAX = 12
-								r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
+								def prepare_cases(cases, cutoff=1):
+									# Calcul des delta déclarés
+									new_cases = cases.diff()
 
-								def prepare_cases(cases, cutoff=2):
-									new_cases = cases
-
+									#Lisser la courbe de différences selon la loi de Gauss avec 2 écarts types
 									smoothed = new_cases.rolling(7,
 										win_type='gaussian',
 										min_periods=1,
@@ -756,91 +621,21 @@ def main():
 									original = new_cases.loc[smoothed.index]
 
 									return original, smoothed
-								cases = df.xs(country_name).rename(f"{country_name} cases")
-
-								original, smoothed = prepare_cases(cases)
-
-
-								GAMMA = 1/7
-								def get_posteriors(sr, sigma=0.15):
-
-									# (1) Calculate Lambda
-									lam = sr[:-1].values * np.exp(GAMMA * (r_t_range[:, None] - 1))
-
-
-								# (2) Calculate each day's likelihood
-									likelihoods = pd.DataFrame(
-										data = sps.poisson.pmf(sr[1:].values, lam),
-										index = r_t_range,
-										columns = sr.index[1:])
-
-								# (3) Create the Gaussian Matrix
-									process_matrix = sps.norm(loc=r_t_range,
-																scale=sigma
-																).pdf(r_t_range[:, None])
-
-								# (3a) Normalize all rows to sum to 1
-									process_matrix /= process_matrix.sum(axis=0)
-
-								# (4) Calculate the initial prior
-								#prior0 = sps.gamma(a=4).pdf(r_t_range)
-									prior0 = np.ones_like(r_t_range)/len(r_t_range)
-									prior0 /= prior0.sum()
-
-								# Create a DataFrame that will hold our posteriors for each day
-								# Insert our prior as the first posterior.
-									posteriors = pd.DataFrame(
-										index=r_t_range,
-										columns=sr.index,
-										data={sr.index[0]: prior0}
-									)
-
-								# We said we'd keep track of the sum of the log of the probability
-								# of the data for maximum likelihood calculation.
-									log_likelihood = 0.0
-
-								# (5) Iteratively apply Bayes' rule
-									for previous_day, current_day in zip(sr.index[:-1], sr.index[1:]):
-
-									#(5a) Calculate the new prior
-										current_prior = process_matrix @ posteriors[previous_day]
-
-									#(5b) Calculate the numerator of Bayes' Rule: P(k|R_t)P(R_t)
-										numerator = likelihoods[current_day] * current_prior
-
-									#(5c) Calcluate the denominator of Bayes' Rule P(k)
-										denominator = np.sum(numerator)
-										if denominator!=0:
-
-									# Execute full Bayes' Rule
-											posteriors[current_day] = numerator/denominator
-											k=posteriors[current_day]
-									# Add to the running sum of log likelihoods
-
-											log_likelihood += np.log(denominator)
-										else:
-											posteriors[current_day]=k
-
-									return posteriors, log_likelihood
-
-								# Note that we're fixing sigma to a value just for the example
-								posteriors, log_likelihood = get_posteriors(smoothed, sigma=.25)
-								posteriors=posteriors.dropna(axis=1, how='all')
-								def highest_density_interval(pmf, p=.9, debug=False):
-								# If we pass a DataFrame, just call this recursively on the columns
+								def highest_density_interval(pmf, p, debug=False):
+									# If we pass a DataFrame, just call this recursively on the columns
 									if(isinstance(pmf, pd.DataFrame)):
 										return pd.DataFrame([highest_density_interval(pmf[col], p=p) for col in pmf],
-														index=pmf.columns)
-
+															index=pmf.columns)
+									#print(col)
 									cumsum = np.cumsum(pmf.values)
 
-								# N x N matrix of total probability mass for each low, high
+									# N x N matrix of total probability mass for each low, high
 									total_p = cumsum - cumsum[:, None]
 
-								# Return all indices with total_p > p
+									# Return all indices with total_p > p
 									lows, highs = (total_p > p).nonzero()
 
-								# Find the smallest range (highest density)
+									# Find the smallest range (highest density)
 									best = (highs - lows).argmin()
 
 									low = pmf.index[lows[best]]
@@ -848,134 +643,379 @@ def main():
 
 									return pd.Series([low, high],
 													index=[f'Low_{p*100:.0f}',
-														f'High_{p*100:.0f}'])
+															f'High_{p*100:.0f}'])
+								def get_posteriors(sr, sigma, Gamma):
 
-								hdi = highest_density_interval(posteriors, debug=True)
-								# Note that this takes a while to execute - it's not the most efficient algorithm
-								hdis = highest_density_interval(posteriors, p=.9)
-
-								most_likely = posteriors.idxmax().rename('ML')
-
-								# Look into why you shift -1
-								#result0 = pd.concat([most_likely, hdis], axis=1)
-								#original, smoothed = prepare_cases(cases,10)
-								#posteriors, log_likelihood = get_posteriors(smoothed, sigma=.25)
-								#posteriors=posteriors.dropna(axis=1, how='all')
-								#hdi = highest_density_interval(posteriors, debug=True)
-								# Note that this takes a while to execute - it's not the most efficient algorithm
-								#hdis = highest_density_interval(posteriors, p=.9)
-
-								#most_likely = posteriors.idxmax().rename('ML')
-								result = pd.concat([most_likely, hdis], axis=1)
-								#if result1.index[-1]==result0.index[-1]:
-									#result=result0
-								#else:
-									#jours=(result1.index[0]-result0.index[-1]).days
-									#st.markdown(jours)
-									#if  jours==0:
-										#result=result0
-									#else:
-										#res=result0
-										#ld=list(result0.index)
-										#lr=list(result0['ML'])
-										#for i in range((result1.index[0]-result0.index[-1]).days):
-											#ld.append(result0.index[-1]+timedelta(days=i+1))
-											#lr.append(np.nan)
-
-										#df= pd.DataFrame(list(zip(ld, lr)),
-													#columns =['Date', 'ML'])
-										#re = pd.DataFrame(df, columns=['Date',"ML"]).set_index('Date')
-										#result=re.append(result1)
+									# (1) Calcul de Lambda sur l'intervalle défini de Rt
+									lam = sr[:-1].values * np.exp(Gamma * (r_t_range[:, None] - 1))
 
 
+									# (2) calcul de la vraisemblance
+									likelihoods = pd.DataFrame(
+										data = sps.poisson.pmf(sr[1:].values, lam),
+										index = r_t_range,
+										columns = sr.index[1:])
 
-								index = pd.to_datetime(result['ML'].index.get_level_values('Date'))
-								values = result['ML'].values
-								low=result['Low_90'].values
-								high=result['High_90'].values
-								R0 = pd.DataFrame(list(zip(list(index), list(values),list(low),list(high))),
-											columns =['Date', 'R0','Low_90','High_90'])
-								R0.index=R0.Date
-								r0=R0.copy()
+									# (3)  Création de la matrice gaussienne
+									process_matrix = sps.norm(loc=r_t_range,
+															scale=sigma
+															).pdf(r_t_range[:, None])
 
-								coun=[select_reg for i in range(len(list(values)))]
-								R0_BR=list(values)
-								dt=list(result.index)
-								data_per=pd.DataFrame(list(zip(dt,coun,R0_BR,list(low),list(high))),
-									columns =['Date',"STATE","R0",'Low_90','High_90'])
+									# (3a) Normalisation des lignes pour que la somme soit égale à 1
+									process_matrix /= process_matrix.sum(axis=0)
+
+									# (4) Calcul de la valeur initiale
+									prior0 = sps.gamma(a=4).pdf(r_t_range)
+									prior0 /= prior0.sum()
+
+									# Créez un DataFrame qui tiendra les valeurs postérieurs pour chaque jour
+									# Inserer la première valeur
+									posteriors = pd.DataFrame(
+										index=r_t_range,
+										columns=sr.index,
+										data={sr.index[0]: prior0}
+									)
+
+									# Nous avons dit que nous garderions une trace de la somme du logarithme de la probabilité
+									# des données pour le calcul du maximum de vraisemblance.
+									log_likelihood = 0.0
+
+									# (5) Calcul Iterative de la règle Bayésienne
+									for previous_day, current_day in zip(sr.index[:-1], sr.index[1:]):
+
+										#(5a) Calculer la nouvelle valeur
+										current_prior = process_matrix @ posteriors[previous_day]
+
+										#(5b) Calculer le numerateur bayésien de la règle: P(k|R_t)P(R_t)
+										numerator = likelihoods[current_day] * current_prior
+
+										#(5c) Calculer le numerateur bayésien de la règle: P(k)
+										denominator = np.sum(numerator)
+
+										# Executer la loi bayésienne
+										posteriors[current_day] = numerator/denominator
+
+										# Ajouter la somme cummulée
+										log_likelihood += np.log(denominator)
+
+									return posteriors, log_likelihood
+								country_name = select_reg
+
+								Proba=0.95
+								R_T_MAX = 6
+								Pas= 200
+
+								Smoo_or_orig=1
+
+
+								sigma=0.25
+								sig1=0.15
+
+								r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*Pas+1)
+								cases1 = df.groupby([ 'STATE','Date']).sum()
+
+								cases = cases1.xs(country_name).rename(f"{country_name} case")
+
+								original, smoothed = prepare_cases(cases)
+
+
+								smoothed=smoothed.where(smoothed > 1, 1)
+								Interval_serials=[4,7]
+								import matplotlib.pyplot as Pll
+								Fig = Pll.figure(figsize = (16, 6))
+								iii=1
+
+								for Interval_serial in Interval_serials:
+
+									Gamma= 1/Interval_serial
+									#  la valeur sigma est prise juste comme exemple
+									if Smoo_or_orig==1: posteriors, log_likelihood = get_posteriors(smoothed, sig1, Gamma)
+									if Smoo_or_orig==0: posteriors, log_likelihood = get_posteriors(original, sig1, Gamma)
+
+
+
+									hdis1 = highest_density_interval(posteriors, 0.9, debug=False)
+									hdis2 = highest_density_interval(posteriors, 0.95, debug=False)
+
+									most_likely = posteriors.idxmax().rename('Most Likely ' + str(Interval_serial)+' days')
+
+									if iii==1:
+										result = pd.concat([ most_likely, hdis1,hdis2], axis=1)
+									else:
+										result = pd.concat([result, most_likely, hdis1,hdis2], axis=1)
+
+									#Pll.subplot(1,len(Interval_serials),iii)
+
+									#Pll.plot(posteriors.index,posteriors,marker='.',c='r',alpha=.03)
+									iii=iii+1
+
+
+
+
+
+								#result.tail()
+								Fig = Pll.figure(figsize = (16, 10))
+								iii=0
 								fig = go.Figure()
-								#fig.add_trace(go.Line(name="R0 - Bettencourt & Rebeiro ", x=list(data_per['Date']), y=list(data_per['R0'])))
+								tit=country_name + ': Rt daily with serial interval of 4 and 7 days, credible interval ='+str(Proba*100)[:-2]+'%'
 								fig.update_layout(
 								showlegend=True,
 
 
 										xaxis_title="Date",
-										yaxis_title="R0_Bettencourt & Rebeiro",
+
 										plot_bgcolor='white'
 									)
-								reference_line = go.Scatter(x=list(data_per['Date']),
-															y=[1 for i in range(len(list(data_per["Date"])))],
-															mode="lines",
-															line=go.scatter.Line(color="black"),
+								j=0
 
-															showlegend=False)
+								k=0
+								for Interval_serial in Interval_serials:
+									if k==0:
+										k=k+1
+										x=list(result['Most Likely ' + str(Interval_serial)+' days'].index)
+										x_rev = x[::-1]
+										y1=list(result.iloc[:,[1+iii,3+iii]].min(axis=1))
+										y_lower_rev = y1[::-1]
+										y2=list(result.iloc[:,[2+iii,4+iii]].max(axis=1))
+										fig.add_trace(go.Scatter(
+											x=x+x_rev,
+											y=y2+y_lower_rev,
+											fill='toself',
+											fillcolor='rgba(0,176,246,0.2)',
+											line_color='rgba(255,255,255,0)',
+											name='HDI' + str(Interval_serial)+' days',
+											showlegend=True
+										))
+									else:
+										iii=iii+5
+										x=list(result['Most Likely ' + str(Interval_serial)+' days'].index)
+										x_rev = x[::-1]
+										y1=list(result.iloc[:,[1+iii,3+iii]].min(axis=1))
+										y_lower_rev = y1[::-1]
+										y2=list(result.iloc[:,[2+iii,4+iii]].max(axis=1))
+										fig.add_trace(go.Scatter(
+											x=x+x_rev,
+											y=y2+y_lower_rev,
+											fill='toself',
+											fillcolor='rgba(0,100,80,0.2)',
+											line_color='rgba(255,255,255,0)',
+											name='HDI' + str(Interval_serial)+' days',
+											showlegend=True
+										))
+								iii=0
+								reference_line = go.Scatter(x=x,
+													y=[1 for i in range(len(x))],
+													mode="lines",
+													line=go.scatter.Line(color="red"),
+
+													showlegend=False)
 								fig.add_trace(reference_line)
-								reference_line = go.Scatter(x=list(data_per['Date']),
-															y=R0_BR,
-															mode="markers+lines",
-															marker={'color':"DarkRed"},
-															line=go.scatter.Line(color="FireBrick"),
-															name="Predicted",
-															showlegend=True)
-								fig.add_trace(reference_line)
+								for Interval_serial in Interval_serials:
+
+									if j==0:
+										j=j+1
+
+										fig.add_trace(go.Scatter(x=result['Most Likely ' + str(Interval_serial)+' days'].index,
+												y=result['Most Likely ' + str(Interval_serial)+' days'],
+
+																		mode="markers+lines",
+																		#label='ML ' + str(Interval_serial)+' days',
+																		#title='Most Likely 4 days',
+																		marker=dict(size=4,
+																		line=dict(width=2,
+																				color="blue"   )),
+																		line=go.scatter.Line(color="Blue"),
+																		name='ML ' + str(Interval_serial)+' days',
+																		showlegend=True)
+																		#figsize=(900/72, 450/72),
+																		#markersize=15
+												)
+										#import plotly.express as px
+										#colors = px.colors.qualitative.Plotly
+
+
+
+
+										iii=iii+5
+									else:
+										fig.add_trace(go.Scatter(x=result['Most Likely ' + str(Interval_serial)+' days'].index,
+												y=result['Most Likely ' + str(Interval_serial)+' days'],
+
+																		mode="markers+lines",
+																		#label='ML ' + str(Interval_serial)+' days',
+																		#title='Most Likely 4 days',
+																		marker=dict(size=4,
+																		line=dict(width=2,
+																					color='Green')),
+																		line=go.scatter.Line(color="Green"),
+																		name='ML ' + str(Interval_serial)+' days',
+																		showlegend=True)
+																		#figsize=(900/72, 450/72),
+																		#markersize=15
+												)
+
+
+								#st.markdown(tt)
+								fig.update_layout(
+									title=select_reg + ": "+str(tt))
 								st.plotly_chart(fig)
-								R0.index=R0.Date
-								R0=data_per
+
+
+
+
+
+
+								result.to_excel("Rt_Data.xlsx")
+								R0=result
+
+
+								R0['Date']=list(result['Most Likely 4 days'].index)
+								#R0=data_per
 								from scipy.signal import argrelextrema
 
-								l=[R0["Date"][i].strftime("%d-%m-%Y") for i in range(len(R0))]
-								R0["Date"]=l
-								n=len(l)
+								#l=[R0["Date"][i].strftime("%d-%m-%Y") for i in range(len(R0))]
+								#R0["Date"]=l
+								n=len(list(R0['Date']))
 
-								R0.plot(x="Date",y="R0",label="R0_Bettencourt_&_Ribeiro", figsize=(14,5), color="m")
-								R0.to_excel("Data_Bettencourt_&_Ribeiro_"+select_reg+".xlsx")
 
-								peak_indexes = argrelextrema(np.array(list(R0['R0'])), np.greater)
+								#R0.plot(x="Date",y="R0",label="R0_Bettencourt_&_Ribeiro", figsize=(14,5), color="m")
+
+
+								peak_indexes = argrelextrema(np.array(list(R0['Most Likely 4 days'])), np.greater)
 								peak_indexes = peak_indexes[0]
-								plt.axhline(y=1,linestyle='--', color='black')
+								#plt.axhline(y=1,linestyle='--', color='black')
 
 								# Plot peaks.
 								peak_x = peak_indexes
-								peak_y = np.array(list(R0['R0']))[peak_indexes]
+								peak_y = np.array(list(R0['Most Likely 4 days']))[peak_indexes]
 
 								# Find valleys(min).
-								valley_indexes = argrelextrema(np.array(list(R0['R0'])), np.less)
+								valley_indexes = argrelextrema(np.array(list(R0['Most Likely 4 days'])), np.less)
 								valley_indexes = valley_indexes[0]
 
 
 								# Plot valleys.
 								valley_x = valley_indexes
-								valley_y =  np.array(list(R0['R0']))[valley_indexes]
+								valley_y =  np.array(list(R0['Most Likely 4 days']))[valley_indexes]
 
 								reg_x=np.union1d(valley_indexes,peak_indexes)
-								reg_y=np.array(list(R0['R0']))[reg_x]
-								plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="Régression Linéaire")
-								# Save graph to file.
-								plt.xlabel('Date')
-								plt.legend(loc='best')
-								#path=os.path.abspath(os.getcwd())
-								plt.savefig('R0_B&R.jpg')
+								rx=[list(result['Date'])[i] for i in reg_x]
+								reg_y=np.array(list(R0['Most Likely 4 days']))[reg_x]
+								#plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="Régression Linéaire")
+								fig = go.Figure()
+								tit=select_reg+ ': Rt daily with serial interval of 4 days, credible interval ='+str(Proba*100)[:-2]+'%'
+								fig.update_layout(
+								showlegend=True,
 
 
-								image = Image.open('R0_B&R.jpg')
-								st.image(image, caption='R0_Bettencourt & Rebeiro '+select_reg,
-										use_column_width=True)
+										title=tit,
+
+										plot_bgcolor='white'
+									)
+								reference_line = go.Scatter(x=list(result['Date']),
+													y=[1 for i in range(len(list(result['Date'])))],
+													mode="lines",
+													line=go.scatter.Line(color="black"),
+
+													showlegend=False)
+								fig.add_trace(reference_line)
+								fig.add_trace(go.Scatter(name="Most Likely 4 days", x=list(result['Date']), y=list(result['Most Likely 4 days']),line=go.scatter.Line(color="blue")))
+								fig.update_layout(
+									showlegend=True,
+									xaxis_title="Time (Date)",
+									#yaxis_title="Nº of cumulative cases",
+									plot_bgcolor='white'
+
+								)
+								fig.add_trace(go.Scatter(x=rx,y=reg_y,
+
+																mode="markers+lines",
+																#label='ML ' + str(Interval_serial)+' days',
+																#title='Most Likely 4 days',
+																marker=dict(size=6,
+																line=dict(width=2,
+																			color='red')),
+																line=go.scatter.Line(color="red"),
+																name='Linear Regression',
+																showlegend=True)
+																#figsize=(900/72, 450/72),
+																#markersize=15
+										)
+
+
+
+								st.plotly_chart(fig)
+								peak_indexes = argrelextrema(np.array(list(R0['Most Likely 7 days'])), np.greater)
+								peak_indexes = peak_indexes[0]
+								#plt.axhline(y=1,linestyle='--', color='black')
+
+								# Plot peaks.
+								peak_x = peak_indexes
+								peak_y = np.array(list(R0['Most Likely 7 days']))[peak_indexes]
+
+								# Find valleys(min).
+								valley_indexes = argrelextrema(np.array(list(R0['Most Likely 7 days'])), np.less)
+								valley_indexes = valley_indexes[0]
+
+
+								# Plot valleys.
+								valley_x = valley_indexes
+								valley_y =  np.array(list(R0['Most Likely 7 days']))[valley_indexes]
+
+								reg_x=np.union1d(valley_indexes,peak_indexes)
+								rx=[list(result['Date'])[i] for i in reg_x]
+								reg_y=np.array(list(R0['Most Likely 7 days']))[reg_x]
+								#plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="Régression Linéaire")
+								fig = go.Figure()
+								tit=select_reg + ': Rt daily with serial interval of 7 days, credible interval ='+str(Proba*100)[:-2]+'%'
+								fig.update_layout(
+								showlegend=True,
+
+
+										title=tit,
+
+										plot_bgcolor='white'
+									)
+								reference_line = go.Scatter(x=list(result['Date']),
+													y=[1 for i in range(len(list(result['Date'])))],
+													mode="lines",
+													line=go.scatter.Line(color="black"),
+
+													showlegend=False)
+								fig.add_trace(reference_line)
+								fig.add_trace(go.Scatter(name="Most Likely 7 days", x=list(result['Date']), y=list(result['Most Likely 7 days']),line=go.scatter.Line(color="green")))
+								fig.update_layout(
+									showlegend=True,
+									xaxis_title="Time (Date)",
+									#yaxis_title="Nº of cumulative cases",
+									plot_bgcolor='white'
+
+								)
+								fig.add_trace(go.Scatter(x=rx,y=reg_y,
+
+																mode="markers+lines",
+																#label='ML ' + str(Interval_serial)+' days',
+																#title='Most Likely 4 days',
+																marker=dict(size=6,
+																line=dict(width=2,
+																			color='red')),
+																line=go.scatter.Line(color="red"),
+																name='Linear Regression',
+																showlegend=True)
+																#figsize=(900/72, 450/72),
+																#markersize=15
+										)
+
+
+
+								st.plotly_chart(fig)
 								st.markdown("""""")
-								st.markdown("""**Note: ** World knows both a decrease in the number of new reported cases and an increase in it. In fact, some countries sometimes report zero coronavirus cases for a period of time as China, Somalia... This variance can influence the calculation of R0. That's why you can observe some missing values.    """)
+								#st.markdown("""**Note: ** World knows both a decrease in the number of new reported cases and an increase in it. In fact, some countries sometimes report zero coronavirus cases for a period of time as China, Somalia... This variance can influence the calculation of R0. That's why you can observe some missing values.    """)
 								#Downoad data
+								st.markdown(get_binary_file_downloader_html("Rt_Data.xlsx", 'R0_Bettencourt&Rebeiro Data'), unsafe_allow_html=True)
 
 
-								st.markdown(get_binary_file_downloader_html("Data_Bettencourt_&_Ribeiro_"+select_reg+".xlsx", 'R0_Bettencourt& Rebeiro Data'), unsafe_allow_html=True)
+
 
 							except:
 
@@ -1104,10 +1144,11 @@ def main():
 
 								from scipy.signal import argrelextrema
 								data=data_per
+
 								data['Country']=[select_reg for i in range(len(data))]
-								da=[data['Date'][i].strftime("%d-%m-%Y") for i in range(len(data))]
-								data['Date']=da
-								data.plot(x="Date",y="R0_Simpliste",label="R0", figsize=(14,5), color="m")
+								#da=[data['Date'][i].strftime("%d-%m-%Y") for i in range(len(data))]
+								da=data['Date']
+								#data.plot(x="Date",y="R0_Simpliste",label="R0", figsize=(14,5), color="m")
 
 
 								peak_indexes = argrelextrema(np.array(list(data['R0_Simpliste'])), np.greater)
@@ -1129,18 +1170,55 @@ def main():
 
 								reg_x=np.union1d(valley_indexes,peak_indexes)
 								reg_y=np.array(list(data['R0_Simpliste']))[reg_x]
-								plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="linear regression")
-								# Save graph to file.
-								plt.xlabel('Date')
-								plt.legend(loc='best')
+								rx=[list(data['Date'])[i] for i in reg_x]
+								fig = go.Figure()
+								tit=select_reg + ': R0 - Simplistic '
+								fig.update_layout(
+								showlegend=True,
 
-								plt.title("R0_Simpliste "+select_reg)
-								plt.legend(loc='best')
+
+										title=tit,
+
+										plot_bgcolor='white'
+									)
+								reference_line = go.Scatter(x=list(data['Date']),
+													y=[1 for i in range(len(list(data['Date'])))],
+													mode="lines",
+													line=go.scatter.Line(color="black"),
+
+													showlegend=False)
+								fig.add_trace(reference_line)
+								fig.add_trace(go.Scatter(name="R0 - Simplistic Method", x=list(data['Date']), y=list(data['R0_Simpliste']),line=go.scatter.Line(color="blue")))
+								fig.update_layout(
+									showlegend=True,
+									xaxis_title="Time (Date)",
+									#yaxis_title="Nº of cumulative cases",
+									plot_bgcolor='white'
+
+								)
+								fig.add_trace(go.Scatter(x=rx,y=reg_y,
+
+																mode="markers+lines",
+																#label='ML ' + str(Interval_serial)+' days',
+																#title='Most Likely 4 days',
+																marker=dict(size=6,
+																line=dict(width=2,
+																			color='red')),
+																line=go.scatter.Line(color="red"),
+																name='Linear Regression',
+																showlegend=True)
+																#figsize=(900/72, 450/72),
+																#markersize=15
+										)
+
+								# Save graph to file.
+								#plt.xlabel('Date')
+								#plt.legend(loc='best')
 								#path=os.path.abspath(os.getcwd())
-								plt.savefig('R0_Sim.jpg')
-								image = Image.open('R0_Sim.jpg')
-								st.image(image, caption='R0_Simplist '+select_reg,
-								use_column_width=True)
+								#plt.savefig('R0_B&R.jpg')
+
+								st.plotly_chart(fig)
+
 
 								#Downoad data
 								st.markdown("""""")
@@ -1151,7 +1229,7 @@ def main():
 
 								st.markdown(get_binary_file_downloader_html('R0_sim.xlsx', 'R0_simp Data'), unsafe_allow_html=True)
 							except:
-								print("Something went wrong")
+								st.markdown("Something went wrong")
 
 
 						elif radio=="Logistic Model":
@@ -1669,17 +1747,15 @@ def main():
 									data1.to_excel("Data_covid.xlsx")
 									url = 'Data_covid.xlsx'
 									dff = pd.read_excel(url,
-														usecols=['Date', 'Country/Region', 'Difference'],
+														usecols=['Date', 'Country/Region', 'Confirmed'],
 														index_col=[1,0],
 														squeeze=True).sort_index()
 									country_name = count
-									# We create an array for every possible value of Rt
-									R_T_MAX = 12
-									r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
+									def prepare_cases(cases, cutoff=1):
+										# Calcul des delta déclarés
+										new_cases = cases.diff()
 
-									def prepare_cases(cases, cutoff=2):
-										new_cases = cases
-
+										#Lisser la courbe de différences selon la loi de Gauss avec 2 écarts types
 										smoothed = new_cases.rolling(7,
 											win_type='gaussian',
 											min_periods=1,
@@ -1691,91 +1767,21 @@ def main():
 										original = new_cases.loc[smoothed.index]
 
 										return original, smoothed
-									cases = dff.xs(country_name).rename(f"{country_name} cases")
-
-									original, smoothed = prepare_cases(cases)
-
-									GAMMA = 1/7
-									def get_posteriors(sr, sigma=0.15):
-
-										# (1) Calculate Lambda
-										lam = sr[:-1].values * np.exp(GAMMA * (r_t_range[:, None] - 1))
-
-
-									# (2) Calculate each day's likelihood
-										likelihoods = pd.DataFrame(
-											data = sps.poisson.pmf(sr[1:].values, lam),
-											index = r_t_range,
-											columns = sr.index[1:])
-
-									# (3) Create the Gaussian Matrix
-										process_matrix = sps.norm(loc=r_t_range,
-																	scale=sigma
-																	).pdf(r_t_range[:, None])
-
-									# (3a) Normalize all rows to sum to 1
-										process_matrix /= process_matrix.sum(axis=0)
-
-									# (4) Calculate the initial prior
-									#prior0 = sps.gamma(a=4).pdf(r_t_range)
-										prior0 = np.ones_like(r_t_range)/len(r_t_range)
-										prior0 /= prior0.sum()
-
-									# Create a DataFrame that will hold our posteriors for each day
-									# Insert our prior as the first posterior.
-										posteriors = pd.DataFrame(
-											index=r_t_range,
-											columns=sr.index,
-											data={sr.index[0]: prior0}
-										)
-
-									# We said we'd keep track of the sum of the log of the probability
-									# of the data for maximum likelihood calculation.
-										log_likelihood = 0.0
-
-									# (5) Iteratively apply Bayes' rule
-										for previous_day, current_day in zip(sr.index[:-1], sr.index[1:]):
-
-										#(5a) Calculate the new prior
-											current_prior = process_matrix @ posteriors[previous_day]
-
-										#(5b) Calculate the numerator of Bayes' Rule: P(k|R_t)P(R_t)
-											numerator = likelihoods[current_day] * current_prior
-
-										#(5c) Calcluate the denominator of Bayes' Rule P(k)
-											denominator = np.sum(numerator)
-											if denominator!=0:
-
-										# Execute full Bayes' Rule
-												posteriors[current_day] = numerator/denominator
-												k=numerator/denominator
-
-										# Add to the running sum of log likelihoods
-
-												log_likelihood += np.log(denominator)
-											else:
-												posteriors[current_day]=k
-
-										return posteriors, log_likelihood
-
-									# Note that we're fixing sigma to a value just for the example
-									posteriors, log_likelihood = get_posteriors(smoothed, sigma=.25)
-									posteriors=posteriors.dropna(axis=1, how='all')
-									def highest_density_interval(pmf, p=.9, debug=False):
-									# If we pass a DataFrame, just call this recursively on the columns
+									def highest_density_interval(pmf, p, debug=False):
+										# If we pass a DataFrame, just call this recursively on the columns
 										if(isinstance(pmf, pd.DataFrame)):
 											return pd.DataFrame([highest_density_interval(pmf[col], p=p) for col in pmf],
-															index=pmf.columns)
-
+																index=pmf.columns)
+										#print(col)
 										cumsum = np.cumsum(pmf.values)
 
-									# N x N matrix of total probability mass for each low, high
+										# N x N matrix of total probability mass for each low, high
 										total_p = cumsum - cumsum[:, None]
 
-									# Return all indices with total_p > p
+										# Return all indices with total_p > p
 										lows, highs = (total_p > p).nonzero()
 
-									# Find the smallest range (highest density)
+										# Find the smallest range (highest density)
 										best = (highs - lows).argmin()
 
 										low = pmf.index[lows[best]]
@@ -1783,67 +1789,176 @@ def main():
 
 										return pd.Series([low, high],
 														index=[f'Low_{p*100:.0f}',
-															f'High_{p*100:.0f}'])
+																f'High_{p*100:.0f}'])
+									def get_posteriors(sr, sigma, Gamma):
 
-									hdi = highest_density_interval(posteriors, debug=True)
-									# Note that this takes a while to execute - it's not the most efficient algorithm
-									hdis = highest_density_interval(posteriors, p=.9)
-
-									most_likely = posteriors.idxmax().rename('ML')
-
-									# Look into why you shift -1
-									result = pd.concat([most_likely, hdis], axis=1)
+										# (1) Calcul de Lambda sur l'intervalle défini de Rt
+										lam = sr[:-1].values * np.exp(Gamma * (r_t_range[:, None] - 1))
 
 
-									index = pd.to_datetime(result['ML'].index.get_level_values('Date'))
+										# (2) calcul de la vraisemblance
+										likelihoods = pd.DataFrame(
+											data = sps.poisson.pmf(sr[1:].values, lam),
+											index = r_t_range,
+											columns = sr.index[1:])
 
-									values = result['ML'].values
-									low=result['Low_90'].values
-									high=result['High_90'].values
+										# (3)  Création de la matrice gaussienne
+										process_matrix = sps.norm(loc=r_t_range,
+																scale=sigma
+																).pdf(r_t_range[:, None])
+
+										# (3a) Normalisation des lignes pour que la somme soit égale à 1
+										process_matrix /= process_matrix.sum(axis=0)
+
+										# (4) Calcul de la valeur initiale
+										prior0 = sps.gamma(a=4).pdf(r_t_range)
+										prior0 /= prior0.sum()
+
+										# Créez un DataFrame qui tiendra les valeurs postérieurs pour chaque jour
+										# Inserer la première valeur
+										posteriors = pd.DataFrame(
+											index=r_t_range,
+											columns=sr.index,
+											data={sr.index[0]: prior0}
+										)
+
+										# Nous avons dit que nous garderions une trace de la somme du logarithme de la probabilité
+										# des données pour le calcul du maximum de vraisemblance.
+										log_likelihood = 0.0
+
+										# (5) Calcul Iterative de la règle Bayésienne
+										for previous_day, current_day in zip(sr.index[:-1], sr.index[1:]):
+
+											#(5a) Calculer la nouvelle valeur
+											current_prior = process_matrix @ posteriors[previous_day]
+
+											#(5b) Calculer le numerateur bayésien de la règle: P(k|R_t)P(R_t)
+											numerator = likelihoods[current_day] * current_prior
+
+											#(5c) Calculer le numerateur bayésien de la règle: P(k)
+											denominator = np.sum(numerator)
+
+											# Executer la loi bayésienne
+											posteriors[current_day] = numerator/denominator
+
+											# Ajouter la somme cummulée
+											log_likelihood += np.log(denominator)
+
+										return posteriors, log_likelihood
+
+									Proba=0.95
+									R_T_MAX = 6
+									Pas= 200
+
+									Smoo_or_orig=1
+
+
+									sigma=0.25
+									sig1=0.15
+
+									r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*Pas+1)
+									cases1 = dff.groupby([ 'Country/Region','Date']).sum()
+
+									cases = cases1.xs(country_name).rename(f"{country_name} case")
+
+									original, smoothed = prepare_cases(cases)
+
+
+									smoothed=smoothed.where(smoothed > 1, 1)
+									Interval_serials=[4,7]
+
+									iii=1
+
+									for Interval_serial in Interval_serials:
+
+										Gamma= 1/Interval_serial
+										#  la valeur sigma est prise juste comme exemple
+										if Smoo_or_orig==1: posteriors, log_likelihood = get_posteriors(smoothed, sig1, Gamma)
+										if Smoo_or_orig==0: posteriors, log_likelihood = get_posteriors(original, sig1, Gamma)
 
 
 
-									coun=[count for i in range(len(list(values)))]
+										hdis1 = highest_density_interval(posteriors, 0.9, debug=False)
+										hdis2 = highest_density_interval(posteriors, 0.95, debug=False)
+
+										most_likely = posteriors.idxmax().rename('Most Likely ' + str(Interval_serial)+' days')
+
+										if iii==1:
+											result = pd.concat([ most_likely, hdis1,hdis2], axis=1)
+										else:
+											result = pd.concat([result, most_likely, hdis1,hdis2], axis=1)
+
+										#Pll.subplot(1,len(Interval_serials),iii)
+
+										#Pll.plot(posteriors.index,posteriors,marker='.',c='r',alpha=.03)
+										iii=iii+1
 
 
-									R0 = pd.DataFrame(list(zip(list(index),coun, list(values))),
-												columns =['Date',"Country/Region", 'R0',])
+
+
+
+
+									x=list(result['Most Likely 4 days'].index)
+									coun=[count for i in range(len(list(x)))]
+									y4=result['Most Likely 4 days']
+									y7=result['Most Likely 7 days']
+
+
+									R0 = pd.DataFrame(list(zip(x,coun, y4,y7)),
+												columns =['Date',"Country/Region", 'Most Likely 4 days','Most Likely 7 days'])
 									ld.append(R0)
+
+
+								#st.write( pd.concat(ld))
 
 
 							except:
 								st.markdown("**Note** : Sorry, something went wrong, you can use simplistic method to visualize R0 evolution of  "+count)
 							df_row = pd.concat(ld)
-							df_row=df_row.sort_values(by=['Date'])
+							df_row=df_row.sort_values(by=['Date',"Country/Region"])
 							ind1=min(list(df_row['Date']))
 
 							ind2=max(list(df_row['Date']))
 							n=(ind2-ind1).days
 							dat=[ind1+timedelta(days=i) for i in range(n+1)]
 
-							#from_date  = st.selectbox('From :', dat )
-							#l2=dat[1:]
-							#to_date= st.selectbox('To :',l2  )
-							#ind1=[index for index, value in enumerate(list(df_row['Date'])) if value == from_date][0]
-							#ind2=[index for index, value in enumerate(list(df_row['Date'])) if value == to_date][-1]
-							R0_BR=list(df_row['R0'])
-							dt=list(df_row['Date'])
-							coun=list(df_row['Country/Region'])
-							data_per=pd.DataFrame(list(zip(list(index),coun,R0_BR,list(low),list(high))),
-								columns =['Date',"Country/Region","R0",'Low_90','High_90'])
+
+
 
 							#i1=from_date
 							#i2=to_date
 							#n=(i2-i1).days
 							X=dat
-							fig = px.line(data_per,x="Date", y="R0",color="Country/Region")
+							fig = px.line(df_row,x="Date", y="Most Likely 4 days",color="Country/Region")
+							tt='Rt daily with serial interval of 4 days, credible interval ='+str(Proba*100)[:-2]+'%'
 
 
 
 							fig.update_layout(
 								plot_bgcolor='white',
 								xaxis_title="Date",
-								yaxis_title="R0 Bettencourt & Rebeiro"
+								title=tt
+								#yaxis_title="R0 Bettencourt & Rebeiro"
+							)
+							reference_line = go.Scatter(x=X,
+													y=[1 for i in range(len(X))],
+													mode="lines",
+													line=go.scatter.Line(color="black"),
+
+													showlegend=False)
+							fig.add_trace(reference_line)
+							#df_row=df_row.sort_values(by=['Country/Region',"Date"])
+							st.plotly_chart(fig)
+							fig = px.line(df_row,x="Date", y="Most Likely 7 days",color="Country/Region")
+							tt='Rt daily with serial interval of 7 days, credible interval ='+str(Proba*100)[:-2]+'%'
+
+
+
+							fig.update_layout(
+								plot_bgcolor='white',
+								xaxis_title="Date",
+								title=tt
+								#yaxis_title="R0 Bettencourt & Rebeiro"
 							)
 							reference_line = go.Scatter(x=X,
 													y=[1 for i in range(len(X))],
@@ -1859,7 +1974,7 @@ def main():
 
 							st.markdown(get_binary_file_downloader_html('R0_BR.xlsx', 'Data'), unsafe_allow_html=True)
 						except:
-							print('something went wrong')
+							st.markdown('something went wrong')
 
 
 					if op=="Doubling Time":
@@ -2678,10 +2793,11 @@ def main():
 
 							from scipy.signal import argrelextrema
 							data=data_per
+
 							data['Country']=[select1 for i in range(len(data))]
-							da=[data['Date'][i].strftime("%d-%m-%Y") for i in range(len(data))]
-							data['Date']=da
-							data.plot(x="Date",y="R0_Simpliste",label="R0", figsize=(14,5), color="m")
+							#da=[data['Date'][i].strftime("%d-%m-%Y") for i in range(len(data))]
+							da=data['Date']
+							#data.plot(x="Date",y="R0_Simpliste",label="R0", figsize=(14,5), color="m")
 
 
 							peak_indexes = argrelextrema(np.array(list(data['R0_Simpliste'])), np.greater)
@@ -2703,18 +2819,55 @@ def main():
 
 							reg_x=np.union1d(valley_indexes,peak_indexes)
 							reg_y=np.array(list(data['R0_Simpliste']))[reg_x]
-							plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="linear regression")
-							# Save graph to file.
-							plt.xlabel('Date')
-							plt.legend(loc='best')
+							rx=[list(data['Date'])[i] for i in reg_x]
+							fig = go.Figure()
+							tit=select1 + ': R0 - Simplistic '
+							fig.update_layout(
+							showlegend=True,
 
-							plt.title("R0_Simpliste "+select1)
-							plt.legend(loc='best')
+
+									title=tit,
+
+									plot_bgcolor='white'
+								)
+							reference_line = go.Scatter(x=list(data['Date']),
+												y=[1 for i in range(len(list(data['Date'])))],
+												mode="lines",
+												line=go.scatter.Line(color="black"),
+
+												showlegend=False)
+							fig.add_trace(reference_line)
+							fig.add_trace(go.Scatter(name="R0 - Simplistic Method", x=list(data['Date']), y=list(data['R0_Simpliste']),line=go.scatter.Line(color="blue")))
+							fig.update_layout(
+								showlegend=True,
+								xaxis_title="Time (Date)",
+								#yaxis_title="Nº of cumulative cases",
+								plot_bgcolor='white'
+
+							)
+							fig.add_trace(go.Scatter(x=rx,y=reg_y,
+
+															mode="markers+lines",
+															#label='ML ' + str(Interval_serial)+' days',
+															#title='Most Likely 4 days',
+															marker=dict(size=6,
+															line=dict(width=2,
+																		color='red')),
+															line=go.scatter.Line(color="red"),
+															name='Linear Regression',
+															showlegend=True)
+															#figsize=(900/72, 450/72),
+															#markersize=15
+									)
+
+							# Save graph to file.
+							#plt.xlabel('Date')
+							#plt.legend(loc='best')
 							#path=os.path.abspath(os.getcwd())
-							plt.savefig('R0_Sim.jpg')
-							image = Image.open('R0_Sim.jpg')
-							st.image(image, caption='R0_Simplist '+select1,
-							use_column_width=True)
+							#plt.savefig('R0_B&R.jpg')
+
+							st.plotly_chart(fig)
+
 
 							#Downoad data
 							st.markdown("""""")
@@ -2725,7 +2878,7 @@ def main():
 
 							st.markdown(get_binary_file_downloader_html('R0_sim.xlsx', 'R0_simp Data'), unsafe_allow_html=True)
 						except:
-							print("Something went wrong")
+							st.markdown("Something went wrong")
 
 					elif radio=="R0 (Bettencourt and Rebeiro Method)":
 
@@ -2744,7 +2897,7 @@ def main():
 							image = Image.open("r0.png")
 							st.image(image,
 							use_column_width=True)
-							st.markdown("***R0:***")
+							#st.markdown("***R0:***")
 							df = pd.read_excel("Covid.xlsx")
 							df=df[df["Country/Region"]==select1]
 							#Convert Date column to date type:
@@ -2757,17 +2910,16 @@ def main():
 							df.to_excel("Data_covid.xlsx")
 							url = 'Data_covid.xlsx'
 							df = pd.read_excel(url,
-												usecols=['Date', 'Country/Region', 'Difference'],
+												usecols=['Date', 'Country/Region', 'Confirmed'],
 												index_col=[1,0],
 												squeeze=True).sort_index()
 							country_name = select1
-							# We create an array for every possible value of Rt
-							R_T_MAX = 12
-							r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
 
-							def prepare_cases(cases, cutoff=2):
-								new_cases = cases
+							def prepare_cases(cases, cutoff=1):
+								# Calcul des delta déclarés
+								new_cases = cases.diff()
 
+								#Lisser la courbe de différences selon la loi de Gauss avec 2 écarts types
 								smoothed = new_cases.rolling(7,
 									win_type='gaussian',
 									min_periods=1,
@@ -2779,92 +2931,21 @@ def main():
 								original = new_cases.loc[smoothed.index]
 
 								return original, smoothed
-							cases = df.xs(country_name).rename(f"{country_name} cases")
-
-							original, smoothed = prepare_cases(cases)
-							GAMMA = 1/7
-
-
-							def get_posteriors(sr, sigma=0.15):
-
-								# (1) Calculate Lambda
-								lam = sr[:-1].values * np.exp(GAMMA * (r_t_range[:, None] - 1))
-
-
-							# (2) Calculate each day's likelihood
-								likelihoods = pd.DataFrame(
-									data = sps.poisson.pmf(sr[1:].values, lam),
-									index = r_t_range,
-									columns = sr.index[1:])
-
-							# (3) Create the Gaussian Matrix
-								process_matrix = sps.norm(loc=r_t_range,
-															scale=sigma
-															).pdf(r_t_range[:, None])
-
-							# (3a) Normalize all rows to sum to 1
-								process_matrix /= process_matrix.sum(axis=0)
-
-							# (4) Calculate the initial prior
-							#prior0 = sps.gamma(a=4).pdf(r_t_range)
-								prior0 = np.ones_like(r_t_range)/len(r_t_range)
-								prior0 /= prior0.sum()
-
-							# Create a DataFrame that will hold our posteriors for each day
-							# Insert our prior as the first posterior.
-								posteriors = pd.DataFrame(
-									index=r_t_range,
-									columns=sr.index,
-									data={sr.index[0]: prior0}
-								)
-
-							# We said we'd keep track of the sum of the log of the probability
-							# of the data for maximum likelihood calculation.
-								log_likelihood = 0.0
-
-							# (5) Iteratively apply Bayes' rule
-								for previous_day, current_day in zip(sr.index[:-1], sr.index[1:]):
-
-								#(5a) Calculate the new prior
-									current_prior = process_matrix @ posteriors[previous_day]
-
-								#(5b) Calculate the numerator of Bayes' Rule: P(k|R_t)P(R_t)
-									numerator = likelihoods[current_day] * current_prior
-
-								#(5c) Calcluate the denominator of Bayes' Rule P(k)
-									denominator = np.sum(numerator)
-									if denominator!=0:
-
-								# Execute full Bayes' Rule
-										posteriors[current_day] = numerator/denominator
-										k=posteriors[current_day]
-
-								# Add to the running sum of log likelihoods
-
-										log_likelihood += np.log(denominator)
-									else:
-										posteriors[current_day]=k
-
-								return posteriors, log_likelihood
-
-							# Note that we're fixing sigma to a value just for the example
-							posteriors, log_likelihood = get_posteriors(smoothed, sigma=.25)
-							posteriors=posteriors.dropna(axis=1, how='all')
-							def highest_density_interval(pmf, p=.9, debug=False):
-							# If we pass a DataFrame, just call this recursively on the columns
+							def highest_density_interval(pmf, p, debug=False):
+								# If we pass a DataFrame, just call this recursively on the columns
 								if(isinstance(pmf, pd.DataFrame)):
 									return pd.DataFrame([highest_density_interval(pmf[col], p=p) for col in pmf],
-													index=pmf.columns)
-
+														index=pmf.columns)
+								#print(col)
 								cumsum = np.cumsum(pmf.values)
 
-							# N x N matrix of total probability mass for each low, high
+								# N x N matrix of total probability mass for each low, high
 								total_p = cumsum - cumsum[:, None]
 
-							# Return all indices with total_p > p
+								# Return all indices with total_p > p
 								lows, highs = (total_p > p).nonzero()
 
-							# Find the smallest range (highest density)
+								# Find the smallest range (highest density)
 								best = (highs - lows).argmin()
 
 								low = pmf.index[lows[best]]
@@ -2872,114 +2953,379 @@ def main():
 
 								return pd.Series([low, high],
 												index=[f'Low_{p*100:.0f}',
-													f'High_{p*100:.0f}'])
+														f'High_{p*100:.0f}'])
+							def get_posteriors(sr, sigma, Gamma):
 
-							hdi = highest_density_interval(posteriors, debug=True)
-							# Note that this takes a while to execute - it's not the most efficient algorithm
-							hdis = highest_density_interval(posteriors, p=.9)
-
-							most_likely = posteriors.idxmax().rename('ML')
-
-							# Look into why you shift -1
-							result = pd.concat([most_likely, hdis], axis=1)
+								# (1) Calcul de Lambda sur l'intervalle défini de Rt
+								lam = sr[:-1].values * np.exp(Gamma * (r_t_range[:, None] - 1))
 
 
-							index = pd.to_datetime(result['ML'].index.get_level_values('Date'))
-							values = result['ML'].values
-							values = result['ML'].values
-							low=result['Low_90'].values
-							high=result['High_90'].values
+								# (2) calcul de la vraisemblance
+								likelihoods = pd.DataFrame(
+									data = sps.poisson.pmf(sr[1:].values, lam),
+									index = r_t_range,
+									columns = sr.index[1:])
+
+								# (3)  Création de la matrice gaussienne
+								process_matrix = sps.norm(loc=r_t_range,
+														scale=sigma
+														).pdf(r_t_range[:, None])
+
+								# (3a) Normalisation des lignes pour que la somme soit égale à 1
+								process_matrix /= process_matrix.sum(axis=0)
+
+								# (4) Calcul de la valeur initiale
+								prior0 = sps.gamma(a=4).pdf(r_t_range)
+								prior0 /= prior0.sum()
+
+								# Créez un DataFrame qui tiendra les valeurs postérieurs pour chaque jour
+								# Inserer la première valeur
+								posteriors = pd.DataFrame(
+									index=r_t_range,
+									columns=sr.index,
+									data={sr.index[0]: prior0}
+								)
+
+								# Nous avons dit que nous garderions une trace de la somme du logarithme de la probabilité
+								# des données pour le calcul du maximum de vraisemblance.
+								log_likelihood = 0.0
+
+								# (5) Calcul Iterative de la règle Bayésienne
+								for previous_day, current_day in zip(sr.index[:-1], sr.index[1:]):
+
+									#(5a) Calculer la nouvelle valeur
+									current_prior = process_matrix @ posteriors[previous_day]
+
+									#(5b) Calculer le numerateur bayésien de la règle: P(k|R_t)P(R_t)
+									numerator = likelihoods[current_day] * current_prior
+
+									#(5c) Calculer le numerateur bayésien de la règle: P(k)
+									denominator = np.sum(numerator)
+
+									# Executer la loi bayésienne
+									posteriors[current_day] = numerator/denominator
+
+									# Ajouter la somme cummulée
+									log_likelihood += np.log(denominator)
+
+								return posteriors, log_likelihood
+
+							Proba=0.95
+							R_T_MAX = 6
+							Pas= 200
+
+							Smoo_or_orig=1
 
 
-							coun=[select1 for i in range(len(list(values)))]
-							R0_BR=list(values)
-							dt=list(result.index)
-							R0=pd.DataFrame(list(zip(dt,coun,R0_BR,list(low),list(high))),
-								columns =['Date',"STATE","R0",'Low_90','High_90'])
+							sigma=0.25
+							sig1=0.15
 
-							R0.index=R0.Date
-							r0=R0.copy()
+							r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*Pas+1)
+							cases1 = df.groupby([ 'Country/Region','Date']).sum()
 
-							#from_date  = st.selectbox('From :', list(result.index) )
-							#ind1=list(result.index).index(from_date)
-							#l2=list(result.index)[ind1+1:]
-							#to_date= st.selectbox('To :',l2  )
-							#ind2=list(result.index).index(to_date)
+							cases = cases1.xs(country_name).rename(f"{country_name} case")
 
-							R0_BR=list(values)
-							dt=list(result.index)
-							coun=[select1 for i in range(len(dt))]
-							data_per=pd.DataFrame(list(zip(dt,coun,R0_BR,list(low),list(high))),
-								columns =['Date',"Country/Region","R0",'Low_90','High_90'])
+							original, smoothed = prepare_cases(cases)
+
+
+							smoothed=smoothed.where(smoothed > 1, 1)
+							Interval_serials=[4,7]
+							import matplotlib.pyplot as Pll
+							Fig = Pll.figure(figsize = (16, 6))
+							iii=1
+
+							for Interval_serial in Interval_serials:
+
+								Gamma= 1/Interval_serial
+								#  la valeur sigma est prise juste comme exemple
+								if Smoo_or_orig==1: posteriors, log_likelihood = get_posteriors(smoothed, sig1, Gamma)
+								if Smoo_or_orig==0: posteriors, log_likelihood = get_posteriors(original, sig1, Gamma)
+
+
+
+								hdis1 = highest_density_interval(posteriors, 0.9, debug=False)
+								hdis2 = highest_density_interval(posteriors, 0.95, debug=False)
+
+								most_likely = posteriors.idxmax().rename('Most Likely ' + str(Interval_serial)+' days')
+
+								if iii==1:
+									result = pd.concat([ most_likely, hdis1,hdis2], axis=1)
+								else:
+									result = pd.concat([result, most_likely, hdis1,hdis2], axis=1)
+
+								#Pll.subplot(1,len(Interval_serials),iii)
+
+								#Pll.plot(posteriors.index,posteriors,marker='.',c='r',alpha=.03)
+								iii=iii+1
+
+
+
+
+
+							#result.tail()
+							Fig = Pll.figure(figsize = (16, 10))
+							iii=0
 							fig = go.Figure()
-
+							tit=country_name + ': Rt daily with serial interval of 4 and 7 days, credible interval ='+str(Proba*100)[:-2]+'%'
 							fig.update_layout(
 							showlegend=True,
 
 
-									xaxis_title="Date",
-									yaxis_title="R0_Bettencourt & Rebeiro",
+									title=tit,
+
 									plot_bgcolor='white'
 								)
-							reference_line = go.Scatter(x=list(data_per['Date']),
-														y=R0_BR,
-														mode="markers+lines",
-														marker={'color':"DarkRed"},
-														line=go.scatter.Line(color="FireBrick"),
-														name="R0 - Bettencourt & Rebeiro",
-														showlegend=True)
-							fig.add_trace(reference_line)
-							reference_line = go.Scatter(x=list(data_per['Date']),
-														y=[1 for i in range(len(list(data_per["Date"])))],
-														mode="lines",
-														line=go.scatter.Line(color="black"),
+							j=0
 
-														showlegend=False)
+							k=0
+							x=list(result['Most Likely ' + str(Interval_serial)+' days'].index)
+
+							reference_line = go.Scatter(x=x,
+												y=[1 for i in range(len(x))],
+												mode="lines",
+												line=go.scatter.Line(color="red"),
+
+												showlegend=False)
 							fig.add_trace(reference_line)
+							for Interval_serial in Interval_serials:
+								if k==0:
+									k=k+1
+
+									x_rev = x[::-1]
+									y1=list(result.iloc[:,[1+iii,3+iii]].min(axis=1))
+									y_lower_rev = y1[::-1]
+									y2=list(result.iloc[:,[2+iii,4+iii]].max(axis=1))
+									fig.add_trace(go.Scatter(
+										x=x+x_rev,
+										y=y2+y_lower_rev,
+										fill='toself',
+										fillcolor='rgba(0,176,246,0.2)',
+										line_color='rgba(255,255,255,0)',
+										name='HDI' + str(Interval_serial)+' days',
+										showlegend=True
+									))
+								else:
+									iii=iii+5
+									x=list(result['Most Likely ' + str(Interval_serial)+' days'].index)
+									x_rev = x[::-1]
+									y1=list(result.iloc[:,[1+iii,3+iii]].min(axis=1))
+									y_lower_rev = y1[::-1]
+									y2=list(result.iloc[:,[2+iii,4+iii]].max(axis=1))
+									fig.add_trace(go.Scatter(
+										x=x+x_rev,
+										y=y2+y_lower_rev,
+										fill='toself',
+										fillcolor='rgba(0,100,80,0.2)',
+										line_color='rgba(255,255,255,0)',
+										name='HDI' + str(Interval_serial)+' days',
+										showlegend=True
+									))
+							iii=0
+
+
+							for Interval_serial in Interval_serials:
+
+								if j==0:
+									j=j+1
+
+									fig.add_trace(go.Scatter(x=result['Most Likely ' + str(Interval_serial)+' days'].index,
+											y=result['Most Likely ' + str(Interval_serial)+' days'],
+
+																	mode="markers+lines",
+																	#label='ML ' + str(Interval_serial)+' days',
+																	#title='Most Likely 4 days',
+																	marker=dict(size=6,
+																	line=dict(width=2,
+																			color="blue"   )),
+																	line=go.scatter.Line(color="Blue"),
+																	name='ML ' + str(Interval_serial)+' days',
+																	showlegend=True)
+																	#figsize=(900/72, 450/72),
+																	#markersize=15
+											)
+									#import plotly.express as px
+									#colors = px.colors.qualitative.Plotly
+
+
+
+
+									iii=iii+5
+								else:
+									fig.add_trace(go.Scatter(x=result['Most Likely ' + str(Interval_serial)+' days'].index,
+											y=result['Most Likely ' + str(Interval_serial)+' days'],
+
+																	mode="markers+lines",
+																	#label='ML ' + str(Interval_serial)+' days',
+																	#title='Most Likely 4 days',
+																	marker=dict(size=6,
+																	line=dict(width=2,
+																				color='Green')),
+																	line=go.scatter.Line(color="Green"),
+																	name='ML ' + str(Interval_serial)+' days',
+																	showlegend=True)
+																	#figsize=(900/72, 450/72),
+																	#markersize=15
+											)
+
+
+
 							st.plotly_chart(fig)
-							R0.index=R0.Date
-							R0=data_per
+							R0=result
+							R0.to_excel("Data_Bettencourt_&_Ribeiro_"+select1+".xlsx")
+							#st.write(R0)
+
+
+							R0['Date']=list(result['Most Likely 4 days'].index)
+							#R0=data_per
 							from scipy.signal import argrelextrema
 
-							l=[R0["Date"][i].strftime("%d-%m-%Y") for i in range(len(R0))]
-							R0["Date"]=l
-							n=len(l)
+							#l=[R0["Date"][i].strftime("%d-%m-%Y") for i in range(len(R0))]
+							#R0["Date"]=l
+							n=len(list(R0['Date']))
 
-							R0.plot(x="Date",y="R0",label="R0_Bettencourt_&_Ribeiro", figsize=(14,5), color="m")
-							R0.to_excel("Data_Bettencourt_&_Ribeiro_"+select1+".xlsx")
 
-							peak_indexes = argrelextrema(np.array(list(R0['R0'])), np.greater)
+							#R0.plot(x="Date",y="R0",label="R0_Bettencourt_&_Ribeiro", figsize=(14,5), color="m")
+
+
+							peak_indexes = argrelextrema(np.array(list(R0['Most Likely 4 days'])), np.greater)
 							peak_indexes = peak_indexes[0]
-							plt.axhline(y=1,linestyle='--', color='black')
+							#plt.axhline(y=1,linestyle='--', color='black')
 
 							# Plot peaks.
 							peak_x = peak_indexes
-							peak_y = np.array(list(R0['R0']))[peak_indexes]
+							peak_y = np.array(list(R0['Most Likely 4 days']))[peak_indexes]
 
 							# Find valleys(min).
-							valley_indexes = argrelextrema(np.array(list(R0['R0'])), np.less)
+							valley_indexes = argrelextrema(np.array(list(R0['Most Likely 4 days'])), np.less)
 							valley_indexes = valley_indexes[0]
 
 
 							# Plot valleys.
 							valley_x = valley_indexes
-							valley_y =  np.array(list(R0['R0']))[valley_indexes]
+							valley_y =  np.array(list(R0['Most Likely 4 days']))[valley_indexes]
 
 							reg_x=np.union1d(valley_indexes,peak_indexes)
-							reg_y=np.array(list(R0['R0']))[reg_x]
-							plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="Régression Linéaire")
+							rx=[list(result['Date'])[i] for i in reg_x]
+							reg_y=np.array(list(R0['Most Likely 4 days']))[reg_x]
+							#plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="Régression Linéaire")
+							fig = go.Figure()
+							tit=country_name + ': Rt daily with serial interval of 4 days, credible interval ='+str(Proba*100)[:-2]+'%'
+							fig.update_layout(
+							showlegend=True,
+
+
+									title=tit,
+
+									plot_bgcolor='white'
+								)
+							reference_line = go.Scatter(x=list(result['Date']),
+												y=[1 for i in range(len(list(result['Date'])))],
+												mode="lines",
+												line=go.scatter.Line(color="black"),
+
+												showlegend=False)
+							fig.add_trace(reference_line)
+							fig.add_trace(go.Scatter(name="Most Likely 4 days", x=list(result['Date']), y=list(result['Most Likely 4 days']),line=go.scatter.Line(color="blue")))
+							fig.update_layout(
+								showlegend=True,
+								xaxis_title="Time (Date)",
+								#yaxis_title="Nº of cumulative cases",
+								plot_bgcolor='white'
+
+							)
+							fig.add_trace(go.Scatter(x=rx,y=reg_y,
+
+															mode="markers+lines",
+															#label='ML ' + str(Interval_serial)+' days',
+															#title='Most Likely 4 days',
+															marker=dict(size=6,
+															line=dict(width=2,
+																		color='red')),
+															line=go.scatter.Line(color="red"),
+															name='Linear Regression',
+															showlegend=True)
+															#figsize=(900/72, 450/72),
+															#markersize=15
+									)
+
 							# Save graph to file.
-							plt.xlabel('Date')
-							plt.legend(loc='best')
+							#plt.xlabel('Date')
+							#plt.legend(loc='best')
 							#path=os.path.abspath(os.getcwd())
-							plt.savefig('R0_B&R.jpg')
+							#plt.savefig('R0_B&R.jpg')
+
+							st.plotly_chart(fig)
+							peak_indexes = argrelextrema(np.array(list(R0['Most Likely 7 days'])), np.greater)
+							peak_indexes = peak_indexes[0]
+							#plt.axhline(y=1,linestyle='--', color='black')
+
+							# Plot peaks.
+							peak_x = peak_indexes
+							peak_y = np.array(list(R0['Most Likely 7 days']))[peak_indexes]
+
+							# Find valleys(min).
+							valley_indexes = argrelextrema(np.array(list(R0['Most Likely 7 days'])), np.less)
+							valley_indexes = valley_indexes[0]
 
 
-							image = Image.open('R0_B&R.jpg')
-							st.image(image, caption='R0_Bettencourt & Rebeiro '+select1,
-									use_column_width=True)
+							# Plot valleys.
+							valley_x = valley_indexes
+							valley_y =  np.array(list(R0['Most Likely 7 days']))[valley_indexes]
+
+							reg_x=np.union1d(valley_indexes,peak_indexes)
+							rx=[list(result['Date'])[i] for i in reg_x]
+							reg_y=np.array(list(R0['Most Likely 7 days']))[reg_x]
+							#plt.plot(reg_x, reg_y, marker='o', linestyle='dashed', color='red', label="Régression Linéaire")
+							fig = go.Figure()
+							tit=country_name + ': Rt daily with serial interval of 7 days, credible interval ='+str(Proba*100)[:-2]+'%'
+							fig.update_layout(
+							showlegend=True,
+
+
+									title=tit,
+
+									plot_bgcolor='white'
+								)
+							reference_line = go.Scatter(x=list(result['Date']),
+												y=[1 for i in range(len(list(result['Date'])))],
+												mode="lines",
+												line=go.scatter.Line(color="black"),
+
+												showlegend=False)
+							fig.add_trace(reference_line)
+							fig.add_trace(go.Scatter(name="Most Likely 7 days", x=list(result['Date']), y=list(result['Most Likely 7 days']),line=go.scatter.Line(color="green")))
+							fig.update_layout(
+								showlegend=True,
+								xaxis_title="Time (Date)",
+								#yaxis_title="Nº of cumulative cases",
+								plot_bgcolor='white'
+
+							)
+							fig.add_trace(go.Scatter(x=rx,y=reg_y,
+
+															mode="markers+lines",
+															#label='ML ' + str(Interval_serial)+' days',
+															#title='Most Likely 4 days',
+															marker=dict(size=6,
+															line=dict(width=2,
+																		color='red')),
+															line=go.scatter.Line(color="red"),
+															name='Linear Regression',
+															showlegend=True)
+															#figsize=(900/72, 450/72),
+															#markersize=15
+									)
+
+
+
+							st.plotly_chart(fig)
+
+
+							#image = Image.open('R0_B&R.jpg')
+							#st.image(image, caption='R0_Bettencourt & Rebeiro '+select1,
+									#use_column_width=True)
 							st.markdown("""""")
-							st.markdown("""**Note: ** World knows both a decrease in the number of new reported cases and an increase in it. In fact, some countries sometimes report zero coronavirus cases for a period of time as China, Somalia... This variance can influence the calculation of R0. That's why you can observe some missing values.    """)
+
 							#Downoad data
 
 
